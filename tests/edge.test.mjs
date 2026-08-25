@@ -76,6 +76,34 @@ const check = (name, fn) => {
     assert.equal(remote.file.orders.find((o) => o.id === row.dataset.id).note, "Riñonera marrón — Íñigo 🧢"));
 }
 
+// 5b. 404 por falta de permisos: nunca se confunde con "archivo vacío"
+{
+  const { doc, remote, settle } = await boot({
+    intercept: ({ method, url }) =>
+      method === "GET" ? httpError(404) : null,
+  });
+  await settle(80);
+  check("un 404 no borra los datos ni crea un archivo vacío", () =>
+    assert.equal(remote.puts.length, 0));
+  check("un 404 explica que el token no ve el repositorio", () =>
+    assert.match(doc.getElementById("gateError").textContent, /no puede acceder a .*pedidos-datos/));
+  check("un 404 no deja la página con la lista vacía en silencio", () =>
+    assert.equal(doc.getElementById("gate").hidden, false));
+}
+
+// 5c. Archivo realmente ausente en un repo accesible: se crea vacío
+{
+  const { doc, remote, settle } = await boot({
+    intercept: ({ method, url }) =>
+      method === "GET" && url.includes("/contents/") ? httpError(404) : null,
+  });
+  await settle(80);
+  check("si el repo se ve pero falta el archivo, se crea vacío", () => {
+    assert.equal(remote.puts.length, 1);
+    assert.equal(doc.getElementById("gate").hidden, true);
+  });
+}
+
 // 6. JSON corrupto en el repositorio
 {
   const { doc } = await boot({

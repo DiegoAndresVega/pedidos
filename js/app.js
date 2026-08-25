@@ -93,6 +93,10 @@ async function loadFromRemote({ throwOnError = false } = {}) {
     if (remoteData === null) {
       ui.isReady = true;
       apply(createEmptyData());
+      showStatus({
+        state: SYNC_STATES.saving,
+        message: `${settings.getRemote().path} no existía: se está creando vacío`,
+      });
       return;
     }
     ui.data = remoteData;
@@ -101,7 +105,8 @@ async function loadFromRemote({ throwOnError = false } = {}) {
     renderAll();
   } catch (error) {
     const cached = settings.getCachedData();
-    if (cached && !throwOnError) {
+    const hasUsableCache = Boolean(cached?.orders?.length || Object.keys(cached?.items || {}).length);
+    if (hasUsableCache && !throwOnError) {
       ui.data = normalizeData(cached);
       ui.isReady = true;
       renderAll();

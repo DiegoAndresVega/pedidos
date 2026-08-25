@@ -34,10 +34,17 @@ function decodeBase64(base64) {
   return new TextDecoder().decode(bytes);
 }
 
+function repoUrl(remote) {
+  return `${GITHUB_API}/repos/${encodeURIComponent(remote.owner)}/${encodeURIComponent(remote.repo)}`;
+}
+
 function contentsUrl(remote) {
-  const { owner, repo, path } = remote;
-  const safePath = path.split("/").map(encodeURIComponent).join("/");
-  return `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${safePath}`;
+  const safePath = remote.path.split("/").map(encodeURIComponent).join("/");
+  return `${repoUrl(remote)}/contents/${safePath}`;
+}
+
+function describe(remote) {
+  return `${remote.owner}/${remote.repo} · ${remote.path} (rama ${remote.branch})`;
 }
 
 function headers(token) {
@@ -78,6 +85,17 @@ async function request(url, token, options = {}) {
   throw new StoreError(ERROR_KINDS.server, `GitHub respondió ${response.status}. ${detail.slice(0, 200)}`, response.status);
 }
 
+/* Un 404 de GitHub no distingue entre "no existe" y "tu token no lo ve".
+   Preguntamos por el repositorio para no confundir falta de permisos con archivo vacío. */
+async function isRepoReachable(remote, token) {
+  try {
+    await request(repoUrl(remote), token);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 /* Devuelve { data, sha } o { data: null, sha: null } si el archivo aún no existe. */
 export async function readData(remote, token) {
   const url = `${contentsUrl(remote)}?ref=${encodeURIComponent(remote.branch)}&t=${Date.now()}`;
@@ -86,7 +104,12 @@ export async function readData(remote, token) {
     payload = await request(url, token);
   } catch (error) {
     if (error instanceof StoreError && error.kind === ERROR_KINDS.notFound) {
-      return { data: null, sha: null };
+      if (await isRepoReachable(remote, token)) return { data: null, sha: null };
+      throw new StoreError(
+        ERROR_KINDS.auth,
+        `El token no puede acceder a ${describe(remote)}. Revisa que el token incluya ese repositorio en «Only select repositories» y tenga Contents: Read and write.`,
+        404,
+      );
     }
     throw error;
   }
@@ -98,7 +121,7 @@ export async function readData(remote, token) {
   try {
     return { data: JSON.parse(decodeBase64(payload.content)), sha: payload.sha };
   } catch (error) {
-    throw new StoreError(ERROR_KINDS.invalid, "datos.json no es un JSON válido.");
+    throw new StoreError(ERROR_KINDS.invalid, `${remote.path} no es un JSON válido.`);
   }
 }
 
