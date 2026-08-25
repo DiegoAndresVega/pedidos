@@ -1,0 +1,457 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-25T15:00:02.825Z",
+  "prices": {
+    "envio": 3
+  },
+  "items": {
+    "gorro_marron": {
+      "label": "Gorros marrón",
+      "price": 30
+    },
+    "gorro_morado": {
+      "label": "Gorros morado",
+      "price": 30
+    },
+    "gorro_blanco": {
+      "label": "Gorros blanco",
+      "price": 30
+    },
+    "gorro_gris": {
+      "label": "Gorros gris",
+      "price": 30
+    },
+    "gorro_azul": {
+      "label": "Gorros azul",
+      "price": 30
+    },
+    "gorro_celeste": {
+      "label": "Gorros celeste",
+      "price": 22
+    },
+    "rin_turquesa": {
+      "label": "Riñoneras turquesa",
+      "price": 50
+    },
+    "rin_negra": {
+      "label": "Riñoneras negra",
+      "price": 50
+    },
+    "rin_rosa": {
+      "label": "Riñoneras rosa",
+      "price": 50
+    },
+    "rin_verde": {
+      "label": "Riñoneras verde",
+      "price": 50
+    },
+    "rin_roja": {
+      "label": "Riñoneras roja",
+      "price": 50
+    },
+    "rin_gris": {
+      "label": "Riñoneras gris",
+      "price": 50
+    },
+    "cartera_azul": {
+      "label": "Carteras azul",
+      "price": 25
+    }
+  },
+  "stock": {
+    "gorro_marron": 6,
+    "gorro_morado": 5,
+    "gorro_blanco": 2,
+    "gorro_gris": 5,
+    "gorro_azul": 5,
+    "gorro_celeste": 1,
+    "rin_turquesa": 4,
+    "rin_negra": 1,
+    "rin_rosa": 2,
+    "rin_verde": 1,
+    "rin_roja": 1,
+    "rin_gris": 1,
+    "cartera_azul": 1
+  },
+  "orders": [
+    {
+      "id": "o001",
+      "group": "EN MANO",
+      "ig": "MERI",
+      "desc": "Gorro azul",
+      "items": [
+        "gorro_azul"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": true,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o002",
+      "group": "EN MANO",
+      "ig": "IRENE MORADO",
+      "desc": "Gorro azul",
+      "items": [
+        "gorro_azul"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": true,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o003",
+      "group": "EN MANO",
+      "ig": "MARTA",
+      "desc": "Gorro marrón // Riñonera negra",
+      "items": [
+        "gorro_marron",
+        "rin_negra"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": true,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o004",
+      "group": "EN MANO",
+      "ig": "MARTA",
+      "desc": "Cartera azul",
+      "items": [
+        "cartera_azul"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o005",
+      "group": "EN MANO",
+      "ig": "IRENE",
+      "desc": "Gorro gris // Gorro marrón",
+      "items": [
+        "gorro_gris",
+        "gorro_marron"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": true,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o006",
+      "group": "EN MANO",
+      "ig": "PATRICIO",
+      "desc": "Gorro gris",
+      "items": [
+        "gorro_gris"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "unpaid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o007",
+      "group": "EN MANO",
+      "ig": "HÉCTOR",
+      "desc": "Gorro marrón",
+      "items": [
+        "gorro_marron"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "unpaid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o008",
+      "group": "EN MANO",
+      "ig": "IRENE MORADO",
+      "desc": "Gorro marrón",
+      "items": [
+        "gorro_marron"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o009",
+      "group": "EN MANO",
+      "ig": "UBE",
+      "desc": "Gorro morado",
+      "items": [
+        "gorro_morado"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o010",
+      "group": "EN MANO",
+      "ig": "Lydia",
+      "desc": "Gorro gris S",
+      "items": [
+        "gorro_gris"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "unpaid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o011",
+      "group": "RETIRADA",
+      "ig": "RUTH",
+      "desc": "Riñonera roja",
+      "items": [
+        "rin_roja"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "unpaid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o012",
+      "group": "RETIRADA",
+      "ig": "BRUNO",
+      "desc": "Riñonera turquesa",
+      "items": [
+        "rin_turquesa"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o013",
+      "group": "RETIRADA",
+      "ig": "criscarry",
+      "desc": "Riñonera verde",
+      "items": [
+        "rin_verde"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o014",
+      "group": "RETIRADA",
+      "ig": "_jalejalo",
+      "desc": "Riñonera turquesa",
+      "items": [
+        "rin_turquesa"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o015",
+      "group": "RETIRADA",
+      "ig": "rulatedd",
+      "desc": "Riñonera turquesa",
+      "items": [
+        "rin_turquesa"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o016",
+      "group": "RETIRADA",
+      "ig": "weedmele_94",
+      "desc": "Riñonera gris (antes de miércoles)",
+      "items": [
+        "rin_gris"
+      ],
+      "shipping": false,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o017",
+      "group": "ENVÍOS",
+      "ig": "tot_per_l.aire",
+      "desc": "Gorro gris",
+      "items": [
+        "gorro_gris"
+      ],
+      "shipping": true,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o018",
+      "group": "ENVÍOS",
+      "ig": "alma.de.ratta",
+      "desc": "Gorro morado",
+      "items": [
+        "gorro_morado"
+      ],
+      "shipping": true,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o019",
+      "group": "ENVÍOS",
+      "ig": "breixinho2",
+      "desc": "Gorro morado // Gorro marrón",
+      "items": [
+        "gorro_morado",
+        "gorro_marron"
+      ],
+      "shipping": true,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o020",
+      "group": "ENVÍOS",
+      "ig": "anii_cp",
+      "desc": "Riñonera rosa",
+      "items": [
+        "rin_rosa"
+      ],
+      "shipping": true,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o021",
+      "group": "ENVÍOS",
+      "ig": "hourseluih",
+      "desc": "Gorro marrón // Riñonera turquesa",
+      "items": [
+        "gorro_marron",
+        "rin_turquesa"
+      ],
+      "shipping": true,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o022",
+      "group": "ENVÍOS",
+      "ig": "Lara.pse",
+      "desc": "Gorro morado",
+      "items": [
+        "gorro_morado"
+      ],
+      "shipping": true,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o023",
+      "group": "ENVÍOS",
+      "ig": "ira_ia_ira",
+      "desc": "Gorro azul",
+      "items": [
+        "gorro_azul"
+      ],
+      "shipping": true,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o024",
+      "group": "ENVÍOS",
+      "ig": "iraarrondo",
+      "desc": "Gorro azul",
+      "items": [
+        "gorro_azul"
+      ],
+      "shipping": true,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    },
+    {
+      "id": "o025",
+      "group": "ENVÍOS",
+      "ig": "_noedaza_",
+      "desc": "Gorro celeste",
+      "items": [
+        "gorro_celeste"
+      ],
+      "shipping": true,
+      "checked": true,
+      "pay": "paid",
+      "delivered": false,
+      "packed": false,
+      "note": ""
+    }
+  ]
+}

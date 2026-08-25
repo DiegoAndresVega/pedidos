@@ -1,0 +1,14 @@
+{
+  "name": "pedidos-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Panel de pedidos e inventario que guarda solo en un repositorio privado de GitHub.",
+  "scripts": {
+    "test": "node tests/app.test.mjs && node tests/edge.test.mjs",
+    "serve": "python3 -m http.server 8777 --bind 127.0.0.1"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  }
+}
