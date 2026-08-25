@@ -5,6 +5,33 @@ import { MAX_ITEM_COPIES, PAY_STATES } from "./config.js";
 
 export const DEFAULT_GROUPS = Object.freeze(["EN MANO", "RETIRADA", "ENVÍOS"]);
 
+/* Datos de envío. Los cuatro primeros hacen falta para poder mandar el paquete. */
+export const SHIPPING_FIELDS = Object.freeze([
+  { key: "fullName", label: "Nombre completo", required: true, type: "text", placeholder: "Marta García López" },
+  { key: "address", label: "Dirección", required: true, type: "text", placeholder: "C/ Mayor 12, 3ºB" },
+  { key: "city", label: "Ciudad", required: true, type: "text", placeholder: "Bilbao" },
+  { key: "postalCode", label: "Código postal", required: true, type: "text", placeholder: "48001" },
+  { key: "email", label: "Email", required: false, type: "email", placeholder: "opcional" },
+  { key: "phone", label: "Teléfono", required: false, type: "tel", placeholder: "opcional" },
+]);
+
+export const SHIPPING_KEYS = Object.freeze(SHIPPING_FIELDS.map((field) => field.key));
+
+function emptyShippingInfo() {
+  return SHIPPING_KEYS.reduce((acc, key) => ({ ...acc, [key]: "" }), {});
+}
+
+function normalizeShippingInfo(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  return SHIPPING_KEYS.reduce((acc, key) => ({ ...acc, [key]: String(source[key] ?? "").trim() }), {});
+}
+
+/* Un envío está listo cuando tiene nombre, dirección, ciudad y código postal. */
+export function missingShippingFields(order) {
+  if (!order.shipping) return [];
+  return SHIPPING_FIELDS.filter((field) => field.required && !order.shippingInfo?.[field.key]);
+}
+
 export function createEmptyData() {
   return {
     version: 1,
@@ -61,6 +88,7 @@ function normalizeOrder(rawOrder, index, items) {
     delivered: Boolean(rawOrder?.delivered),
     packed: Boolean(rawOrder?.packed),
     note: String(rawOrder?.note ?? ""),
+    shippingInfo: normalizeShippingInfo(rawOrder?.shippingInfo),
   };
 }
 
@@ -106,6 +134,7 @@ export function addOrder(data, { ig = "", itemKey = "", group = "" } = {}) {
     delivered: false,
     packed: false,
     note: "",
+    shippingInfo: emptyShippingInfo(),
   };
   const lastOfGroup = data.orders.reduce((last, entry, index) => (entry.group === chosenGroup ? index : last), -1);
   const orders = lastOfGroup === -1
@@ -162,6 +191,16 @@ export function updateOrder(data, id, patch) {
   });
 }
 
+/* Cambia un solo campo de envío sin tocar el resto del pedido. */
+export function updateShippingInfo(data, id, key, value) {
+  if (!SHIPPING_KEYS.includes(key)) return data;
+  const order = findOrder(data, id);
+  if (!order) return data;
+  return updateOrder(data, id, {
+    shippingInfo: { ...order.shippingInfo, [key]: String(value) },
+  });
+}
+
 export function removeOrder(data, id) {
   return withTimestamp({ ...data, orders: data.orders.filter((order) => order.id !== id) });
 }
@@ -207,12 +246,10 @@ export function computeTotals(data) {
     });
   });
 
-  const inventory = Object.keys(data.items).map((key) => ({
-    key,
-    label: data.items[key].label,
-    sold: sold[key],
-    remaining: (data.stock[key] ?? 0) - sold[key],
-  }));
+  const inventory = Object.keys(data.items).map((key) => {
+    const total = data.stock[key] ?? 0;
+    return { key, label: data.items[key].label, sold: sold[key], total, remaining: total - sold[key] };
+  });
 
   const budget = active.reduce(
     (acc, order) => {

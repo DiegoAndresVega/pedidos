@@ -44,6 +44,8 @@
 
   .legend{display:flex;flex-wrap:wrap;gap:16px;margin:18px 0 26px;font-size:13px;color:var(--muted)}
   .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend .lg-num{color:var(--ink);font-weight:700}
+  .legend .lg-out{text-decoration:line-through;text-decoration-color:var(--unpaid);text-decoration-thickness:1px}
 
   .grid{display:grid;grid-template-columns:1fr;gap:22px}
   @media(min-width:900px){.grid{grid-template-columns:1.5fr 1fr}}
@@ -95,15 +97,25 @@
   .order .status .dollar{color:var(--money);font-weight:700;font-family:'Space Grotesk',sans-serif}
   .order .price{font-size:12px;color:var(--muted);white-space:nowrap;margin-top:2px}
 
-  /* inventories */
   .inv-row{display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid #2a2420;font-size:14px}
   .inv-row:last-child{border-bottom:none}
   .inv-row .name{text-transform:capitalize}
   .inv-num{font-family:'Rubik Mono One',monospace;font-weight:600;font-size:18px}
   .inv-row.neg .inv-num{color:var(--unpaid)}
   .inv-row.zero .name{color:var(--muted)}
+
+  /* inventario unificado: "disponible / total"; agotado en gris y tachado en rojo */
+  .inv-row .inv-num .sep,
+  .inv-row .inv-num .total{color:var(--muted);font-weight:400}
+  .inv-row.sold-out .name,
+  .inv-row.sold-out .inv-num{
+    color:var(--muted);
+    text-decoration:line-through;
+    text-decoration-color:var(--unpaid);
+    text-decoration-thickness:1px;
+  }
+  .inv-row.neg .inv-num b{color:var(--unpaid)}
   .badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;margin-left:8px}
-  .badge.occ{background:rgba(196,124,217,.15);color:var(--occ)}
   .badge.stock{background:rgba(95,168,211,.15);color:var(--stock)}
 
   /* budget */
@@ -279,3 +291,36 @@
   .add-form.inventory label:first-of-type{flex:2 1 150px}
   #addOrderForm label:nth-of-type(2){flex:1.7 1 190px}
   @media(max-width:620px){.add-form .tbtn.primary{flex:1 1 100%}}
+
+  /* ---------- datos de envío ---------- */
+  .ship-flag{
+    display:inline-block;margin-left:8px;font-size:11px;letter-spacing:.04em;
+    border:1px solid currentColor;border-radius:20px;padding:1px 8px;vertical-align:1px;
+  }
+  .ship-flag.missing{color:var(--unpaid)}
+  .ship-flag.ok{color:var(--money)}
+
+  .ship-panel{
+    border:1px solid var(--money);border-radius:9px;padding:12px;
+    background:#12100f;display:flex;flex-direction:column;gap:10px;
+  }
+  .ship-panel.incomplete{border-color:var(--unpaid)}
+  .ship-head{
+    display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;justify-content:space-between;
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);
+  }
+  .ship-state{font-size:11px;letter-spacing:.04em;text-transform:none;color:var(--money)}
+  .ship-panel.incomplete .ship-state{color:var(--unpaid)}
+  .ship-grid{display:grid;grid-template-columns:1fr;gap:10px}
+  @media(min-width:560px){
+    .ship-grid{grid-template-columns:1fr 1fr}
+    .ship-grid label:nth-child(1),
+    .ship-grid label:nth-child(2){grid-column:1 / -1}
+  }
+  .ship-grid label.req{color:var(--ink)}
+  .ship-grid input{
+    background:#181513;border:1px solid var(--line);border-radius:6px;color:var(--ink);
+    font-family:inherit;font-size:13px;padding:6px 9px;letter-spacing:0;text-transform:none;width:100%;
+  }
+  .ship-grid input:focus{outline:none;border-color:var(--accent)}
+  .ship-grid label.req input:placeholder-shown{border-color:#4a2a27}

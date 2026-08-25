@@ -26,8 +26,24 @@ check("presupuesto calculado", () =>
 check("contador de activos", () =>
   assert.equal(doc.getElementById("checkedCount").textContent, "25 activos"));
 
-check("inventario con stock restante", () =>
-  assert.match(doc.getElementById("invStock").textContent, /Gorros marrón/));
+check("el inventario muestra disponible/total", () => {
+  const rows = [...doc.querySelectorAll("#inventory .inv-row")];
+  assert.equal(rows.length, 13, "debe haber una fila por artículo");
+  const turquesa = rows.find(r => r.querySelector(".name").textContent === "Riñoneras turquesa");
+  assert.equal(turquesa.querySelector(".inv-num").textContent.replace(/\s/g, ""), "0/4");
+});
+check("un artículo agotado se marca como tachado", () => {
+  const marron = [...doc.querySelectorAll("#inventory .inv-row")]
+    .find(r => r.querySelector(".name").textContent === "Gorros marrón");
+  assert.equal(marron.querySelector(".inv-num").textContent.replace(/\s/g, ""), "0/6");
+  assert.ok(marron.classList.contains("sold-out"));
+});
+check("un artículo con existencias no se tacha", () => {
+  const blanco = [...doc.querySelectorAll("#inventory .inv-row")]
+    .find(r => r.querySelector(".name").textContent === "Gorros blanco");
+  assert.equal(blanco.querySelector(".inv-num").textContent.replace(/\s/g, ""), "2/2");
+  assert.equal(blanco.classList.contains("sold-out"), false);
+});
 
 // --- nota persistente ------------------------------------------------------
 const firstRow = doc.querySelector(".order");
@@ -134,8 +150,12 @@ check("crea el artículo con precio y stock", () => {
 });
 check("el artículo nuevo aparece en el desplegable", () =>
   assert.ok([...doc.getElementById("newOrderItem").options].some(o => o.value === "gorros_negro")));
-check("el artículo nuevo aparece en el inventario en pantalla", () =>
-  assert.match(doc.getElementById("invStock").textContent, /Gorros negro/));
+check("el artículo nuevo aparece en el inventario en pantalla", () => {
+  const fila = [...doc.querySelectorAll("#inventory .inv-row")]
+    .find(r => r.querySelector(".name").textContent === "Gorros negro");
+  assert.ok(fila, "no apareció la fila del artículo nuevo");
+  assert.equal(fila.querySelector(".inv-num").textContent.replace(/\s/g, ""), "3/3");
+});
 
 doc.getElementById("newItemLabel").value = "gorros negro";
 doc.getElementById("newItemUnits").value = "2";
@@ -152,6 +172,70 @@ await settle(20);
 check("un artículo sin nombre muestra error y no se guarda", () => {
   assert.match(doc.getElementById("addItemMsg").textContent, /necesita un nombre/);
   assert.equal(doc.getElementById("addItemMsg").hidden, false);
+});
+
+// --- datos de envío ---------------------------------------------------------
+const shipRow = [...doc.querySelectorAll(".order")].find(
+  (row) => row.querySelector(".ship-flag"));
+check("los pedidos con envío muestran el aviso de datos", () => {
+  assert.ok(shipRow, "ninguna fila mostró el aviso de envío");
+  assert.match(shipRow.querySelector(".ship-flag").textContent, /faltan datos/);
+});
+check("los pedidos sin envío no muestran el aviso", () => {
+  const enMano = doc.querySelector('.order[data-id="o001"]');
+  assert.equal(enMano.querySelector(".ship-flag"), null);
+});
+
+const shipId = shipRow.dataset.id;
+doc.querySelector(`.order[data-id="${shipId}"] [data-act="edit"]`).click();
+check("el panel de envío solo sale en pedidos con envío", () =>
+  assert.ok(doc.querySelector(`.order[data-id="${shipId}"] .ship-panel`)));
+check("están los seis campos pedidos", () =>
+  assert.deepEqual(
+    [...doc.querySelectorAll(`.order[data-id="${shipId}"] [data-ship]`)].map(i => i.dataset.ship),
+    ["fullName", "address", "city", "postalCode", "email", "phone"]));
+
+const typeShip = (key, value) => {
+  const input = doc.querySelector(`.order[data-id="${shipId}"] [data-ship="${key}"]`);
+  input.value = value;
+  input.dispatchEvent(new window.Event("input", { bubbles: true }));
+};
+typeShip("fullName", "Marta García López");
+typeShip("address", "C/ Mayor 12, 3ºB");
+await settle(60);
+
+check("los datos de envío se guardan en el repositorio", () => {
+  const saved = remote.file.orders.find(o => o.id === shipId);
+  assert.equal(saved.shippingInfo.fullName, "Marta García López");
+  assert.equal(saved.shippingInfo.address, "C/ Mayor 12, 3ºB");
+});
+check("escribir la dirección no repinta la fila", () =>
+  assert.equal(doc.querySelector(`.order[data-id="${shipId}"] [data-ship="address"]`).value, "C/ Mayor 12, 3ºB"));
+check("con datos a medias sigue avisando de lo que falta", () =>
+  assert.match(doc.querySelector(`.order[data-id="${shipId}"] .ship-state`).textContent, /Faltan 2 de 4/));
+
+typeShip("city", "Bilbao");
+typeShip("postalCode", "48001");
+await settle(60);
+check("al completar los cuatro obligatorios el aviso pasa a listo", () => {
+  assert.match(doc.querySelector(`.order[data-id="${shipId}"] .ship-flag`).textContent, /envío listo/);
+  assert.equal(doc.querySelector(`.order[data-id="${shipId}"] .ship-panel`).classList.contains("incomplete"), false);
+});
+
+typeShip("email", "marta@ejemplo.com");
+typeShip("phone", "600123456");
+await settle(60);
+check("email y teléfono son opcionales pero se guardan", () => {
+  const saved = remote.file.orders.find(o => o.id === shipId);
+  assert.equal(saved.shippingInfo.email, "marta@ejemplo.com");
+  assert.equal(saved.shippingInfo.phone, "600123456");
+});
+
+doc.querySelector(`.order[data-id="${shipId}"] [data-act="done"]`).click();
+check("los datos siguen ahí al reabrir el panel", () => {
+  doc.querySelector(`.order[data-id="${shipId}"] [data-act="edit"]`).click();
+  assert.equal(doc.querySelector(`.order[data-id="${shipId}"] [data-ship="city"]`).value, "Bilbao");
+  doc.querySelector(`.order[data-id="${shipId}"] [data-act="done"]`).click();
 });
 
 // --- borrar pedido ---------------------------------------------------------

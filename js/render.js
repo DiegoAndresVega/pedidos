@@ -1,7 +1,7 @@
 /* Construcción del DOM. No modifica datos: solo los pinta. */
 
 import { PAY_STATES } from "./config.js";
-import { computeTotals, listGroups, orderPrice } from "./state.js";
+import { computeTotals, listGroups, missingShippingFields, orderPrice, SHIPPING_FIELDS } from "./state.js";
 
 function esc(value) {
   return String(value ?? "")
@@ -34,6 +34,23 @@ function itemChips(data, order) {
     .join("");
 }
 
+function shippingFieldset(order) {
+  if (!order.shipping) return "";
+  const missing = missingShippingFields(order).length;
+  const state = missing ? `Faltan ${missing} de 4 obligatorios` : "Datos completos";
+  const inputs = SHIPPING_FIELDS.map((field) => `
+        <label class="${field.required ? "req" : ""}">${esc(field.label)}${field.required ? " *" : ""}
+          <input type="${field.type}" data-ship="${esc(field.key)}"
+                 value="${esc(order.shippingInfo?.[field.key] ?? "")}"
+                 placeholder="${esc(field.placeholder)}" autocomplete="off">
+        </label>`).join("");
+  return `
+      <div class="ship-panel${missing ? " incomplete" : ""}">
+        <div class="ship-head">📮 Datos de envío <span class="ship-state">${esc(state)}</span></div>
+        <div class="ship-grid">${inputs}</div>
+      </div>`;
+}
+
 function editPanel(data, order) {
   const groups = listGroups(data)
     .map((group) => `<option value="${esc(group)}"></option>`)
@@ -53,6 +70,7 @@ function editPanel(data, order) {
       </div>
       <datalist id="grupos-lista">${groups}</datalist>
       <div class="chips">${itemChips(data, order)}</div>
+      ${shippingFieldset(order)}
       <div class="edit-actions">
         <label class="ship-toggle">
           <input type="checkbox" data-field="shipping" ${order.shipping ? "checked" : ""}>
@@ -62,6 +80,13 @@ function editPanel(data, order) {
         <button type="button" class="tbtn danger" data-act="remove">🗑 Borrar pedido</button>
       </div>
     </div>`;
+}
+
+function shippingFlag(order) {
+  if (!order.shipping) return "";
+  return missingShippingFields(order).length
+    ? `<span class="ship-flag missing">📮 faltan datos de envío</span>`
+    : `<span class="ship-flag ok">📮 envío listo</span>`;
 }
 
 function orderRow(data, order, isEditing) {
@@ -77,7 +102,7 @@ function orderRow(data, order, isEditing) {
           <input class="note" data-act="note" placeholder="nombre / nota…" value="${esc(order.note)}">
           ${statusButtons(order)}
         </div>
-        <div class="price">${price}€${order.shipping ? ` (incl. envío ${data.prices.envio}€)` : ""}</div>
+        <div class="price">${price}€${order.shipping ? ` (incl. envío ${data.prices.envio}€)` : ""}${shippingFlag(order)}</div>
         ${isEditing ? editPanel(data, order) : ""}
       </div>
     </div>`;
@@ -102,26 +127,26 @@ export function renderOrders(container, data, editingId) {
   container.innerHTML = html;
 }
 
-function inventoryRow(label, value, extraClass = "") {
-  return `<div class="inv-row ${extraClass}"><span class="name">${esc(label)}</span><span class="inv-num">${value}</span></div>`;
+/* Una fila por artículo: "Riñoneras turquesa  4/6" = quedan 4 de las 6 que había. */
+function inventoryRow({ label, remaining, total }) {
+  const isSoldOut = remaining <= 0;
+  const classes = ["inv-row", isSoldOut ? "sold-out" : "", remaining < 0 ? "neg" : ""].filter(Boolean).join(" ");
+  return `<div class="${classes}">
+      <span class="name">${esc(label)}</span>
+      <span class="inv-num"><b>${remaining}</b><span class="sep">/</span><span class="total">${total}</span></span>
+    </div>`;
+}
+
+function emptyInventoryRow(text) {
+  return `<div class="inv-row zero"><span class="name">${esc(text)}</span><span class="inv-num">—</span></div>`;
 }
 
 export function renderTotals(data, elements) {
   const { activeCount, inventory, budget } = computeTotals(data);
 
-  const soldRows = inventory.filter((row) => row.sold > 0).map((row) => inventoryRow(row.label, row.sold));
-  elements.sold.innerHTML = soldRows.length
-    ? soldRows.join("")
-    : inventoryRow("Nada vendido", 0, "zero");
-
-  elements.stock.innerHTML = inventory.length
-    ? inventory
-        .map((row) => {
-          const cls = row.remaining < 0 ? "neg" : row.remaining === 0 ? "zero" : "";
-          return inventoryRow(row.label, row.remaining, cls);
-        })
-        .join("")
-    : inventoryRow("Sin artículos definidos", 0, "zero");
+  elements.inventory.innerHTML = inventory.length
+    ? inventory.map(inventoryRow).join("")
+    : emptyInventoryRow("Sin artículos todavía");
 
   elements.budget.innerHTML = `
     <div class="b-row"><span>Total esperado</span><span class="amt">${budget.expected}€</span></div>

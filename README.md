@@ -49,7 +49,10 @@ Si se cae la red, se sigue trabajando sobre una copia local y se reintenta hasta
 | 📦 / ✅ | Empaquetado / entregado |
 | ✏️ | Abre el panel: nombre, descripción, categoría, artículos y borrar |
 | campo *nombre / nota* | Texto libre bajo cada pedido, se guarda solo |
+| 📮 en la fila | Solo en pedidos con envío: en rojo si falta algún dato obligatorio, en verde si está listo |
+| bloque *Datos de envío* | Dentro de ✏️ en los pedidos con envío: nombre completo, dirección, ciudad y código postal (obligatorios) + email y teléfono (opcionales) |
 | formulario superior | Alta de pedido: nombre + producto + categoría |
+| inventario | Una sola lista: `4/6` = quedan 4 de las 6 que había. Los agotados salen en gris y tachados en rojo |
 | formulario del inventario | Alta de artículo; si ya existe, suma unidades a su stock |
 | ↻ Recargar | Trae los últimos datos (útil si has editado desde otro dispositivo) |
 | ⬇ Copia de seguridad | Descarga un `.json` suelto, por si acaso |
@@ -61,7 +64,7 @@ Los clics sobre un artículo en el panel de edición van sumando unidades (1 →
 
 ```bash
 npm install     # jsdom, solo para los tests
-npm test        # 42 pruebas
+npm test        # 58 pruebas
 npm run serve   # http://127.0.0.1:8777
 ```
 

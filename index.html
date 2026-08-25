@@ -65,8 +65,8 @@
   <span>📦 Empaquetado</span>
   <span>❌ No pagado</span>
   <span>✏️ Editar nombre, artículos o bloque</span>
-  <span style="color:var(--occ)">■ Vendido (sale del stock)</span>
-  <span style="color:var(--stock)">■ Stock disponible</span>
+  <span>📮 Datos de envío</span>
+  <span>Inventario: <b class="lg-num">disponible</b>/total · <s class="lg-out">agotado</s></span>
 </div>
 
 <div class="grid">
@@ -98,13 +98,8 @@
     </div>
 
     <div class="card">
-      <h2>Inventario <span class="badge occ">Vendido</span></h2>
-      <div id="invOccupied"></div>
-    </div>
-
-    <div class="card">
-      <h2>Inventario <span class="badge stock">Stock disponible</span></h2>
-      <div id="invStock"></div>
+      <h2>Inventario <span class="badge stock">Disponible / Total</span></h2>
+      <div id="inventory"></div>
 
       <form class="add-form inventory" id="addItemForm">
         <label>Artículo

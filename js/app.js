@@ -8,18 +8,19 @@ import {
   addOrder,
   createEmptyData,
   cycleOrderItem,
+  missingShippingFields,
   normalizeData,
   removeOrder,
   togglePay,
   updateOrder,
+  updateShippingInfo,
   upsertItem,
 } from "./state.js";
 import { createSync, SYNC_STATES } from "./sync.js";
 
 const dom = {
   orders: document.getElementById("orders"),
-  sold: document.getElementById("invOccupied"),
-  stock: document.getElementById("invStock"),
+  inventory: document.getElementById("inventory"),
   budget: document.getElementById("budget"),
   count: document.getElementById("checkedCount"),
   savedTag: document.getElementById("savedTag"),
@@ -172,10 +173,37 @@ dom.orders.addEventListener("change", (event) => {
 dom.orders.addEventListener("input", (event) => {
   const id = orderIdFrom(event.target);
   if (!id) return;
+
+  const shippingKey = event.target.dataset.ship;
+  if (shippingKey) {
+    apply(updateShippingInfo(ui.data, id, shippingKey, event.target.value), { rerender: false });
+    refreshShippingState(id);
+    return;
+  }
+
   const field = event.target.dataset.act === "note" ? "note" : event.target.dataset.field;
   if (!["note", "ig", "desc", "group"].includes(field)) return;
   apply(updateOrder(ui.data, id, { [field]: event.target.value }), { rerender: false });
 });
+
+/* Actualiza el aviso de envío sin repintar la fila, para no perder el cursor. */
+function refreshShippingState(id) {
+  const row = dom.orders.querySelector(`.order[data-id="${id}"]`);
+  const order = ui.data.orders.find((entry) => entry.id === id);
+  if (!row || !order) return;
+
+  const missing = missingShippingFields(order).length;
+  const flag = row.querySelector(".ship-flag");
+  if (flag) {
+    flag.textContent = missing ? "📮 faltan datos de envío" : "📮 envío listo";
+    flag.classList.toggle("missing", missing > 0);
+    flag.classList.toggle("ok", missing === 0);
+  }
+  const panel = row.querySelector(".ship-panel");
+  const state = row.querySelector(".ship-state");
+  if (panel) panel.classList.toggle("incomplete", missing > 0);
+  if (state) state.textContent = missing ? `Faltan ${missing} de 4 obligatorios` : "Datos completos";
+}
 
 /* ---------- barra de herramientas ---------- */
 
