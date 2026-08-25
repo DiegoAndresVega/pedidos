@@ -127,13 +127,39 @@ export function renderOrders(container, data, editingId) {
   container.innerHTML = html;
 }
 
+/* Editor de un artículo: elegir "disponible" o "total", cambiar el número o borrarlo. */
+function inventoryEditor(row, field) {
+  const current = field === "total" ? row.total : row.remaining;
+  const seg = [
+    { value: "available", label: "Disponible" },
+    { value: "total", label: "Total" },
+  ]
+    .map((option) => `<button type="button" data-inv-field="${option.value}" class="${field === option.value ? "on" : ""}">${option.label}</button>`)
+    .join("");
+  return `
+      <div class="inv-edit">
+        <div class="seg">${seg}</div>
+        <input type="number" min="0" step="1" data-inv-value value="${current}" aria-label="Unidades">
+        <button type="button" class="tbtn" data-inv-act="save">✓ Guardar</button>
+        <button type="button" class="tbtn danger" data-inv-act="remove">🗑 Borrar</button>
+      </div>`;
+}
+
 /* Una fila por artículo: "Riñoneras turquesa  4/6" = quedan 4 de las 6 que había. */
-function inventoryRow({ label, remaining, total }) {
-  const isSoldOut = remaining <= 0;
-  const classes = ["inv-row", isSoldOut ? "sold-out" : "", remaining < 0 ? "neg" : ""].filter(Boolean).join(" ");
-  return `<div class="${classes}">
+function inventoryRow(row, edit) {
+  const { key, label, remaining, total } = row;
+  const isEditing = edit?.key === key;
+  const classes = [
+    "inv-row",
+    remaining <= 0 ? "sold-out" : "",
+    remaining < 0 ? "neg" : "",
+    isEditing ? "editing" : "",
+  ].filter(Boolean).join(" ");
+  return `<div class="${classes}" data-key="${esc(key)}">
       <span class="name">${esc(label)}</span>
       <span class="inv-num"><b>${remaining}</b><span class="sep">/</span><span class="total">${total}</span></span>
+      <button type="button" class="inv-edit-btn" data-inv-act="edit" title="Editar o borrar">✏️</button>
+      ${isEditing ? inventoryEditor(row, edit.field) : ""}
     </div>`;
 }
 
@@ -141,11 +167,11 @@ function emptyInventoryRow(text) {
   return `<div class="inv-row zero"><span class="name">${esc(text)}</span><span class="inv-num">—</span></div>`;
 }
 
-export function renderTotals(data, elements) {
+export function renderTotals(data, elements, inventoryEdit = null) {
   const { activeCount, inventory, budget } = computeTotals(data);
 
   elements.inventory.innerHTML = inventory.length
-    ? inventory.map(inventoryRow).join("")
+    ? inventory.map((row) => inventoryRow(row, inventoryEdit)).join("")
     : emptyInventoryRow("Sin artículos todavía");
 
   elements.budget.innerHTML = `

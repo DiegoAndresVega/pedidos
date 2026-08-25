@@ -221,6 +221,42 @@ export function cycleOrderItem(data, id, itemKey) {
   return updateOrder(data, id, { items: [...rest, ...Array(nextCount).fill(itemKey)] });
 }
 
+/* Unidades ya vendidas de un artículo (solo cuentan los pedidos activos). */
+export function soldCount(data, key) {
+  return data.orders.reduce(
+    (count, order) => (order.checked ? count + order.items.filter((entry) => entry === key).length : count),
+    0,
+  );
+}
+
+/* El stock guardado es el total. Al editar "disponible" se recalcula el total con lo ya vendido. */
+export function setItemQuantity(data, key, field, value) {
+  if (!Object.hasOwn(data.items, key)) return data;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) throw new Error("Escribe un número de 0 en adelante.");
+  const units = Math.round(parsed);
+  const total = field === "available" ? units + soldCount(data, key) : units;
+  return withTimestamp({ ...data, stock: { ...data.stock, [key]: total } });
+}
+
+export function countOrdersWithItem(data, key) {
+  return data.orders.filter((order) => order.items.includes(key)).length;
+}
+
+/* Borra el artículo y lo quita de los pedidos que lo tuvieran, para no dejar restos. */
+export function removeItem(data, key) {
+  const { [key]: droppedItem, ...items } = data.items;
+  const { [key]: droppedStock, ...stock } = data.stock;
+  return withTimestamp({
+    ...data,
+    items,
+    stock,
+    orders: data.orders.map((order) =>
+      order.items.includes(key) ? { ...order, items: order.items.filter((entry) => entry !== key) } : order,
+    ),
+  });
+}
+
 export function findOrder(data, id) {
   return data.orders.find((order) => order.id === id) || null;
 }

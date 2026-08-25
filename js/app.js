@@ -7,10 +7,13 @@ import * as settings from "./settings.js";
 import {
   addOrder,
   createEmptyData,
+  countOrdersWithItem,
   cycleOrderItem,
   missingShippingFields,
   normalizeData,
+  removeItem,
   removeOrder,
+  setItemQuantity,
   togglePay,
   updateOrder,
   updateShippingInfo,
@@ -30,7 +33,7 @@ const dom = {
   itemsDatalist: document.getElementById("articulos-lista"),
 };
 
-const ui = { data: createEmptyData(), editingId: null, isReady: false };
+const ui = { data: createEmptyData(), editingId: null, inventoryEdit: null, isReady: false };
 
 const sync = createSync({
   getRemote: settings.getRemote,
@@ -70,7 +73,7 @@ function showStatus({ state, message }) {
 
 function renderAll() {
   renderOrders(dom.orders, ui.data, ui.editingId);
-  renderTotals(ui.data, dom);
+  renderTotals(ui.data, dom, ui.inventoryEdit);
   renderForms(ui.data, dom);
   dom.hint.textContent = Object.values(ui.data.items)
     .map((item) => `${item.label} ${item.price}€`)
@@ -83,7 +86,7 @@ function apply(nextData, { rerender = true } = {}) {
   settings.setCachedData(nextData);
   sync.queue(nextData);
   if (rerender) renderAll();
-  else renderTotals(ui.data, dom);
+  else renderTotals(ui.data, dom, ui.inventoryEdit);
 }
 
 /* ---------- carga ---------- */
@@ -204,6 +207,56 @@ function refreshShippingState(id) {
   if (panel) panel.classList.toggle("incomplete", missing > 0);
   if (state) state.textContent = missing ? `Faltan ${missing} de 4 obligatorios` : "Datos completos";
 }
+
+/* ---------- edición del inventario ---------- */
+
+dom.inventory.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  const row = button.closest(".inv-row");
+  const key = row?.dataset.key;
+  if (!key) return;
+
+  if (button.dataset.invField) {
+    ui.inventoryEdit = { key, field: button.dataset.invField };
+    renderAll();
+    return;
+  }
+
+  const actions = {
+    edit: () => {
+      ui.inventoryEdit = ui.inventoryEdit?.key === key ? null : { key, field: "available" };
+      renderAll();
+    },
+    save: () => {
+      const input = row.querySelector("[data-inv-value]");
+      try {
+        const next = setItemQuantity(ui.data, key, ui.inventoryEdit.field, input.value);
+        ui.inventoryEdit = null;
+        apply(next);
+      } catch (error) {
+        showStatus({ state: SYNC_STATES.error, message: error.message });
+      }
+    },
+    remove: () => {
+      const used = countOrdersWithItem(ui.data, key);
+      const warning = used
+        ? `Está en ${used} pedido(s): se quitará de ellos y cambiarán sus precios.\n\n`
+        : "";
+      if (!confirm(`${warning}¿Borrar «${ui.data.items[key].label}» del inventario?`)) return;
+      ui.inventoryEdit = null;
+      apply(removeItem(ui.data, key));
+    },
+  };
+  actions[button.dataset.invAct]?.();
+});
+
+/* Enter dentro del número equivale a pulsar Guardar. */
+dom.inventory.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.target.dataset.invValue === undefined) return;
+  event.preventDefault();
+  event.target.closest(".inv-row")?.querySelector('[data-inv-act="save"]')?.click();
+});
 
 /* ---------- barra de herramientas ---------- */
 

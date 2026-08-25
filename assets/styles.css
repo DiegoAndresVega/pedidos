@@ -97,7 +97,8 @@
   .order .status .dollar{color:var(--money);font-weight:700;font-family:'Space Grotesk',sans-serif}
   .order .price{font-size:12px;color:var(--muted);white-space:nowrap;margin-top:2px}
 
-  .inv-row{display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid #2a2420;font-size:14px}
+  .inv-row{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid #2a2420;font-size:14px}
+  .inv-row .name{flex:1}
   .inv-row:last-child{border-bottom:none}
   .inv-row .name{text-transform:capitalize}
   .inv-num{font-family:'Rubik Mono One',monospace;font-weight:600;font-size:18px}
@@ -324,3 +325,30 @@
   }
   .ship-grid input:focus{outline:none;border-color:var(--accent)}
   .ship-grid label.req input:placeholder-shown{border-color:#4a2a27}
+
+  /* ---------- editar un artículo del inventario ---------- */
+  .inv-edit-btn{
+    background:#181513;border:1px solid var(--line);border-radius:6px;cursor:pointer;
+    font-size:13px;padding:2px 7px;filter:grayscale(1) opacity(.5);transition:.15s;
+  }
+  .inv-edit-btn:hover{filter:none;border-color:var(--accent)}
+  .inv-row.editing{background:var(--panel-2)}
+  .inv-row.editing .inv-edit-btn{filter:none;border-color:var(--accent)}
+  .inv-row.editing .name,
+  .inv-row.editing .inv-num{text-decoration:none;color:var(--ink)}
+
+  .inv-edit{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:4px}
+  .inv-edit .seg{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .inv-edit .seg button{
+    background:#181513;border:none;color:var(--muted);cursor:pointer;
+    font-family:inherit;font-size:12px;padding:6px 11px;transition:.15s;
+  }
+  .inv-edit .seg button + button{border-left:1px solid var(--line)}
+  .inv-edit .seg button:hover{color:var(--ink)}
+  .inv-edit .seg button.on{background:var(--occ);color:#161311;font-weight:700}
+  .inv-edit input[type=number]{
+    background:#181513;border:1px solid var(--line);border-radius:7px;color:var(--ink);
+    font-family:inherit;font-size:14px;padding:6px 9px;width:82px;
+  }
+  .inv-edit input[type=number]:focus{outline:none;border-color:var(--accent)}
+  .inv-edit .tbtn{font-size:12px;padding:6px 10px}

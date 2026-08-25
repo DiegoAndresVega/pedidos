@@ -53,6 +53,7 @@ Si se cae la red, se sigue trabajando sobre una copia local y se reintenta hasta
 | bloque *Datos de envío* | Dentro de ✏️ en los pedidos con envío: nombre completo, dirección, ciudad y código postal (obligatorios) + email y teléfono (opcionales) |
 | formulario superior | Alta de pedido: nombre + producto + categoría |
 | inventario | Una sola lista: `4/6` = quedan 4 de las 6 que había. Los agotados salen en gris y tachados en rojo |
+| ✏️ en el inventario | Elige **Disponible** o **Total**, cambia el número y ✓ Guardar (Enter también vale). 🗑 Borrar elimina el artículo; si está en pedidos, avisa y lo quita de ellos |
 | formulario del inventario | Alta de artículo; si ya existe, suma unidades a su stock |
 | ↻ Recargar | Trae los últimos datos (útil si has editado desde otro dispositivo) |
 | ⬇ Copia de seguridad | Descarga un `.json` suelto, por si acaso |
@@ -64,7 +65,7 @@ Los clics sobre un artículo en el panel de edición van sumando unidades (1 →
 
 ```bash
 npm install     # jsdom, solo para los tests
-npm test        # 58 pruebas
+npm test        # 70 pruebas
 npm run serve   # http://127.0.0.1:8777
 ```
 

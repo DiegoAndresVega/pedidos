@@ -174,6 +174,89 @@ check("un artículo sin nombre muestra error y no se guarda", () => {
   assert.equal(doc.getElementById("addItemMsg").hidden, false);
 });
 
+// --- editar el inventario ---------------------------------------------------
+const invRow = (name) => [...doc.querySelectorAll("#inventory .inv-row")]
+  .find(r => r.querySelector(".name").textContent === name);
+const invNum = (name) => invRow(name).querySelector(".inv-num").textContent.replace(/\s/g, "");
+
+check("cada artículo tiene botón de editar", () =>
+  assert.equal(doc.querySelectorAll('#inventory [data-inv-act="edit"]').length,
+    doc.querySelectorAll("#inventory .inv-row").length));
+
+invRow("Gorros blanco").querySelector('[data-inv-act="edit"]').click();
+check("el editor se abre en «Disponible»", () => {
+  const row = invRow("Gorros blanco");
+  assert.ok(row.querySelector(".inv-edit"), "no se abrió el editor");
+  assert.equal(row.querySelector('[data-inv-field="available"]').classList.contains("on"), true);
+  assert.equal(row.querySelector("[data-inv-value]").value, "2");
+});
+
+invRow("Gorros blanco").querySelector("[data-inv-value]").value = "5";
+invRow("Gorros blanco").querySelector('[data-inv-act="save"]').click();
+await settle(60);
+check("editar «Disponible» sube el total con lo ya vendido", () => {
+  assert.equal(invNum("Gorros blanco"), "5/5");
+  assert.equal(remote.file.stock.gorro_blanco, 5);
+});
+check("el editor se cierra al guardar", () =>
+  assert.equal(invRow("Gorros blanco").querySelector(".inv-edit"), null));
+
+// Gorros marrón: 6 vendidos, 0 disponibles
+invRow("Gorros marrón").querySelector('[data-inv-act="edit"]').click();
+invRow("Gorros marrón").querySelector('[data-inv-field="total"]').click();
+check("el selector cambia a «Total» y muestra el total", () => {
+  const row = invRow("Gorros marrón");
+  assert.equal(row.querySelector('[data-inv-field="total"]').classList.contains("on"), true);
+  assert.equal(row.querySelector("[data-inv-value]").value, "6");
+});
+
+invRow("Gorros marrón").querySelector("[data-inv-value]").value = "10";
+invRow("Gorros marrón").querySelector('[data-inv-act="save"]').click();
+await settle(60);
+check("editar «Total» respeta lo vendido", () => {
+  assert.equal(invNum("Gorros marrón"), "4/10");
+  assert.equal(remote.file.stock.gorro_marron, 10);
+});
+check("al reponer stock deja de estar tachado", () =>
+  assert.equal(invRow("Gorros marrón").classList.contains("sold-out"), false));
+
+invRow("Gorros marrón").querySelector('[data-inv-act="edit"]').click();
+invRow("Gorros marrón").querySelector("[data-inv-value]").value = "-3";
+invRow("Gorros marrón").querySelector('[data-inv-act="save"]').click();
+await settle(30);
+check("un número negativo se rechaza y no toca los datos", () => {
+  assert.equal(remote.file.stock.gorro_marron, 10);
+  assert.match(doc.getElementById("savedTag").textContent, /número de 0 en adelante/);
+});
+
+// Borrar un artículo suelto, sin pedidos
+doc.getElementById("newItemLabel").value = "Error de dedo";
+doc.getElementById("newItemPrice").value = "9";
+doc.getElementById("newItemUnits").value = "1";
+doc.getElementById("addItemForm").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+await settle(60);
+check("el artículo equivocado se ha creado", () => assert.ok(invRow("Error de dedo")));
+
+invRow("Error de dedo").querySelector('[data-inv-act="edit"]').click();
+invRow("Error de dedo").querySelector('[data-inv-act="remove"]').click();
+await settle(60);
+check("borrar quita el artículo de la pantalla y del repositorio", () => {
+  assert.equal(invRow("Error de dedo"), undefined);
+  assert.equal(remote.file.items.error_de_dedo, undefined);
+  assert.equal(remote.file.stock.error_de_dedo, undefined);
+});
+check("el artículo borrado desaparece del desplegable de pedidos", () =>
+  assert.equal([...doc.getElementById("newOrderItem").options].some(o => o.value === "error_de_dedo"), false));
+
+// Borrar uno que sí está en pedidos: se limpia de ellos
+invRow("Carteras azul").querySelector('[data-inv-act="edit"]').click();
+invRow("Carteras azul").querySelector('[data-inv-act="remove"]').click();
+await settle(60);
+check("borrar un artículo en uso lo quita también de los pedidos", () => {
+  assert.equal(remote.file.items.cartera_azul, undefined);
+  assert.equal(remote.file.orders.some(o => o.items.includes("cartera_azul")), false);
+});
+
 // --- datos de envío ---------------------------------------------------------
 const shipRow = [...doc.querySelectorAll(".order")].find(
   (row) => row.querySelector(".ship-flag"));
