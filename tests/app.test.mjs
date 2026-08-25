@@ -179,9 +179,9 @@ const tab = (name) => doc.querySelector(`#orderTabs .tab[data-filter="${name}"]`
 const tabCount = (name) => Number(tab(name).querySelector(".tab-n").textContent);
 const visibleRows = () => doc.querySelectorAll("#orders .order").length;
 
-check("hay tres pestañas en la cabecera", () =>
+check("hay cuatro pestañas en la cabecera", () =>
   assert.deepEqual([...doc.querySelectorAll("#orderTabs .tab")].map(t => t.dataset.filter),
-    ["all", "pending", "delivered"]));
+    ["all", "pending", "topack", "delivered"]));
 check("«Todos» está activa al arrancar", () =>
   assert.equal(tab("all").classList.contains("on"), true));
 check("los contadores reparten los pedidos", () => {
@@ -231,6 +231,37 @@ check("desmarcar ✅ lo devuelve a Pendiente", () => {
   assert.equal(tabCount("pending"), pendientesAntes);
   assert.equal(tabCount("delivered"), entregadosIniciales);
 });
+
+// --- pestaña «Por empaquetar» ------------------------------------------------
+tab("topack").click();
+check("«Por empaquetar» solo muestra lo que no está empaquetado", () => {
+  assert.equal(visibleRows(), tabCount("topack"));
+  assert.equal([...doc.querySelectorAll('#orders .order [data-act="pack"]')]
+    .some(b => b.classList.contains("on")), false);
+});
+check("«Por empaquetar» deja fuera lo ya entregado", () =>
+  assert.equal([...doc.querySelectorAll('#orders .order [data-act="deliver"]')]
+    .some(b => b.classList.contains("on")), false));
+
+const porEmpaquetarAntes = tabCount("topack");
+const packed = doc.querySelector("#orders .order").dataset.id;
+doc.querySelector(`.order[data-id="${packed}"] [data-act="pack"]`).click();
+await settle(60);
+check("marcar 📦 lo saca de «Por empaquetar»", () => {
+  assert.equal(tabCount("topack"), porEmpaquetarAntes - 1);
+  assert.equal(doc.querySelector(`#orders .order[data-id="${packed}"]`), null);
+  assert.equal(remote.file.orders.find(o => o.id === packed).packed, true);
+});
+
+doc.querySelector(`.order[data-id="${packed}"]`);
+tab("pending").click();
+check("el pedido empaquetado sigue en Pendiente hasta entregarlo", () =>
+  assert.ok(doc.querySelector(`#orders .order[data-id="${packed}"]`)));
+
+doc.querySelector(`.order[data-id="${packed}"] [data-act="pack"]`).click();
+await settle(60);
+check("desmarcar 📦 lo devuelve a «Por empaquetar»", () =>
+  assert.equal(tabCount("topack"), porEmpaquetarAntes));
 
 tab("all").click();
 check("«Todos» vuelve a mostrar la lista completa", () =>

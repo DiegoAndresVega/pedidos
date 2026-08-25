@@ -111,12 +111,15 @@ function orderRow(data, order, isEditing) {
 const FILTER_TESTS = {
   [FILTERS.all]: () => true,
   [FILTERS.pending]: (order) => !order.delivered,
+  /* Lo que sigue en casa sin empaquetar: si ya está entregado, no hay nada que empaquetar. */
+  [FILTERS.topack]: (order) => !order.packed && !order.delivered,
   [FILTERS.delivered]: (order) => order.delivered,
 };
 
 const EMPTY_TEXTS = {
   [FILTERS.all]: "Todavía no hay pedidos. Añade uno con el formulario de arriba.",
   [FILTERS.pending]: "No queda ningún pedido pendiente. Todo entregado.",
+  [FILTERS.topack]: "No queda nada por empaquetar 📦.",
   [FILTERS.delivered]: "Todavía no has marcado ningún pedido como entregado ✅.",
 };
 
@@ -126,11 +129,9 @@ export function filterOrders(orders, filter) {
 
 /* Números de cada pestaña, siempre sobre la lista completa. */
 export function renderTabs(data, elements, filter) {
-  const counts = {
-    [FILTERS.all]: data.orders.length,
-    [FILTERS.pending]: filterOrders(data.orders, FILTERS.pending).length,
-    [FILTERS.delivered]: filterOrders(data.orders, FILTERS.delivered).length,
-  };
+  const counts = Object.fromEntries(
+    Object.values(FILTERS).map((name) => [name, filterOrders(data.orders, name).length]),
+  );
   elements.tabs.querySelectorAll(".tab").forEach((tab) => {
     const isOn = tab.dataset.filter === filter;
     tab.classList.toggle("on", isOn);

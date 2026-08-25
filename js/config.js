@@ -16,7 +16,12 @@ export const STORAGE_KEYS = Object.freeze({
 });
 
 /* Pestañas de la lista de pedidos. */
-export const FILTERS = Object.freeze({ all: "all", pending: "pending", delivered: "delivered" });
+export const FILTERS = Object.freeze({
+  all: "all",
+  pending: "pending",
+  topack: "topack",
+  delivered: "delivered",
+});
 export const DEFAULT_FILTER = FILTERS.all;
 
 export const GITHUB_API = "https://api.github.com";
