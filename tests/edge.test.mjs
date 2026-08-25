@@ -3,6 +3,17 @@ import fs from "node:fs";
 import { boot, httpError } from "./harness.mjs";
 
 const SEED = JSON.parse(fs.readFileSync(new URL("fixtures/datos.json", import.meta.url), "utf8"));
+/* La nota se edita con 📝 y se confirma con ✓. */
+async function saveNote(doc, window, settle, id, text) {
+  const row = () => doc.querySelector(`.order[data-id="${id}"]`);
+  row().querySelector('[data-act="note-edit"]').click();
+  const input = row().querySelector(".note");
+  input.value = text;
+  input.dispatchEvent(new window.Event("input", { bubbles: true }));
+  row().querySelector('[data-act="note-save"]').click();
+  await settle(80);
+}
+
 const results = [];
 const check = (name, fn) => {
   try { fn(); results.push(["PASS", name]); }
@@ -53,13 +64,10 @@ const check = (name, fn) => {
       return null;
     },
   });
-  const row = doc.querySelector(".order");
-  const note = row.querySelector(".note");
-  note.value = "conflicto";
-  note.dispatchEvent(new window.Event("input", { bubbles: true }));
-  await settle(80);
+  const id = doc.querySelector(".order").dataset.id;
+  await saveNote(doc, window, settle, id, "conflicto");
   check("un conflicto se resuelve solo y el cambio se guarda", () =>
-    assert.equal(remote.file.orders.find((o) => o.id === row.dataset.id).note, "conflicto"));
+    assert.equal(remote.file.orders.find((o) => o.id === id).note, "conflicto"));
   check("el aviso de conflicto es visible", () =>
     assert.match(doc.getElementById("savedTag").textContent, /conflicto|Guardado|Sincronizado/));
 }
@@ -67,13 +75,10 @@ const check = (name, fn) => {
 // 5. Acentos y emoji sobreviven al viaje base64
 {
   const { doc, remote, window, settle } = await boot();
-  const row = doc.querySelector(".order");
-  const note = row.querySelector(".note");
-  note.value = "Riñonera marrón — Íñigo 🧢";
-  note.dispatchEvent(new window.Event("input", { bubbles: true }));
-  await settle(80);
+  const id = doc.querySelector(".order").dataset.id;
+  await saveNote(doc, window, settle, id, "Riñonera marrón — Íñigo 🧢");
   check("acentos y emoji se guardan intactos", () =>
-    assert.equal(remote.file.orders.find((o) => o.id === row.dataset.id).note, "Riñonera marrón — Íñigo 🧢"));
+    assert.equal(remote.file.orders.find((o) => o.id === id).note, "Riñonera marrón — Íñigo 🧢"));
 }
 
 // 5b. 404 por falta de permisos: nunca se confunde con "archivo vacío"

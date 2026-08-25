@@ -46,22 +46,57 @@ check("un artículo con existencias no se tacha", () => {
 });
 
 // --- nota persistente ------------------------------------------------------
-const firstRow = doc.querySelector(".order");
-const orderId = firstRow.dataset.id;
-const note = firstRow.querySelector(".note");
-note.value = "Recoge Marta el jueves";
-note.dispatchEvent(new window.Event("input", { bubbles: true }));
-await settle(60);
+const orderId = doc.querySelector(".order").dataset.id;
+const rowOf = (id) => doc.querySelector(`.order[data-id="${id}"]`);
+const noteOf = (id) => rowOf(id).querySelector(".note");
+const typeNote = (id, value) => {
+  const input = noteOf(id);
+  input.value = value;
+  input.dispatchEvent(new window.Event("input", { bubbles: true }));
+};
 
-check("la nota se guarda en el repositorio", () => {
-  const saved = remote.file.orders.find(o => o.id === orderId);
-  assert.equal(saved.note, "Recoge Marta el jueves");
+check("la nota empieza bloqueada con botón de editar", () => {
+  assert.equal(noteOf(orderId).hasAttribute("readonly"), true);
+  assert.equal(rowOf(orderId).querySelector('[data-act="note-edit"]').textContent.trim(), "📝");
 });
-check("escribir la nota no repinta la fila (no se pierde el foco)", () =>
-  assert.equal(doc.querySelector(".order .note").value, "Recoge Marta el jueves"));
+
+rowOf(orderId).querySelector('[data-act="note-edit"]').click();
+check("📝 desbloquea la nota y ofrece guardar", () => {
+  assert.equal(noteOf(orderId).hasAttribute("readonly"), false);
+  assert.ok(rowOf(orderId).querySelector('[data-act="note-save"]'));
+});
+
+typeNote(orderId, "Recoge Marta el jueves");
+await settle(60);
+check("escribir sin guardar no toca el repositorio", () =>
+  assert.equal(remote.file.orders.find(o => o.id === orderId).note, ""));
+check("el texto escrito no se pierde mientras editas", () =>
+  assert.equal(noteOf(orderId).value, "Recoge Marta el jueves"));
+
+rowOf(orderId).querySelector('[data-act="note-save"]').click();
+await settle(60);
+check("✓ guarda la nota en el repositorio", () =>
+  assert.equal(remote.file.orders.find(o => o.id === orderId).note, "Recoge Marta el jueves"));
+check("tras guardar la nota vuelve a estar bloqueada y visible", () => {
+  assert.equal(noteOf(orderId).hasAttribute("readonly"), true);
+  assert.equal(noteOf(orderId).value, "Recoge Marta el jueves");
+});
+
+rowOf(orderId).querySelector('[data-act="note-edit"]').click();
+typeNote(orderId, "descartar esto");
+noteOf(orderId).dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+check("Escape descarta el cambio y recupera la nota guardada", () =>
+  assert.equal(noteOf(orderId).value, "Recoge Marta el jueves"));
+
+rowOf(orderId).querySelector('[data-act="note-edit"]').click();
+typeNote(orderId, "Paga el viernes");
+noteOf(orderId).dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+await settle(60);
+check("Intro guarda igual que ✓", () =>
+  assert.equal(remote.file.orders.find(o => o.id === orderId).note, "Paga el viernes"));
 
 // --- botones emoji ---------------------------------------------------------
-firstRow.querySelector('[data-act="pack"]').click();
+rowOf(orderId).querySelector('[data-act="pack"]').click();
 await settle(60);
 check("📦 empaquetado se guarda", () =>
   assert.equal(remote.file.orders.find(o => o.id === orderId).packed, true));
@@ -106,6 +141,83 @@ check("añadir un artículo cambia el precio guardado", () => {
 doc.querySelector(`.order[data-id="${orderId}"] [data-act="done"]`).click();
 check("cerrar edición refresca el nombre visible", () =>
   assert.match(doc.querySelector(`.order[data-id="${orderId}"] .desc`).textContent, /MERITXELL/));
+
+// --- mover un pedido de categoría -------------------------------------------
+const anii = remote.file.orders.find(o => o.ig === "anii_cp");
+const groupSelect = (id) => rowOf(id).querySelector('[data-field="group"]');
+
+doc.querySelector(`.order[data-id="${anii.id}"] [data-act="edit"]`).click();
+check("el bloque se elige en un desplegable, no escribiendo", () => {
+  const select = groupSelect(anii.id);
+  assert.equal(select.tagName, "SELECT");
+  assert.equal(select.value, "ENVÍOS");
+  assert.deepEqual([...select.options].map(o => o.value),
+    ["EN MANO", "RETIRADA", "ENVÍOS", "__nueva__"]);
+});
+check("estando en ENVÍOS pide los datos de envío", () =>
+  assert.ok(rowOf(anii.id).querySelector(".ship-panel")));
+
+const seccionesAntes = [...doc.querySelectorAll("#orders .section-label")].map(e => e.textContent);
+groupSelect(anii.id).value = "EN MANO";
+groupSelect(anii.id).dispatchEvent(new window.Event("change", { bubbles: true }));
+await settle(60);
+
+check("el pedido se guarda en la categoría nueva", () =>
+  assert.equal(remote.file.orders.find(o => o.id === anii.id).group, "EN MANO"));
+check("no se crea una segunda sección EN MANO", () => {
+  const secciones = [...doc.querySelectorAll("#orders .section-label")].map(e => e.textContent);
+  assert.deepEqual(secciones, seccionesAntes, "las cabeceras no deben duplicarse");
+  assert.equal(new Set(secciones).size, secciones.length);
+});
+check("el pedido aparece dentro de la sección EN MANO", () => {
+  const nodes = [...doc.querySelectorAll("#orders .section-label, #orders .order")];
+  const rowIndex = nodes.findIndex(n => n.dataset?.id === anii.id);
+  const heading = nodes.slice(0, rowIndex).reverse().find(n => n.classList.contains("section-label"));
+  assert.equal(heading.textContent, "EN MANO");
+});
+check("salir de ENVÍOS quita el gasto de envío", () => {
+  const saved = remote.file.orders.find(o => o.id === anii.id);
+  assert.equal(saved.shipping, false);
+  assert.equal(saved.items.length * 50, 50);
+});
+check("en mano ya no pide datos de envío", () => {
+  assert.equal(rowOf(anii.id).querySelector(".ship-panel"), null);
+  assert.equal(rowOf(anii.id).querySelector(".ship-flag"), null);
+});
+check("el precio pierde los 3€ del envío", () =>
+  assert.equal(rowOf(anii.id).querySelector(".price").textContent.trim(), "50€"));
+
+// Volver a ENVÍOS lo devuelve a su sitio y recupera el envío
+groupSelect(anii.id).value = "ENVÍOS";
+groupSelect(anii.id).dispatchEvent(new window.Event("change", { bubbles: true }));
+await settle(60);
+check("volver a ENVÍOS reactiva el envío", () => {
+  assert.equal(remote.file.orders.find(o => o.id === anii.id).shipping, true);
+  assert.ok(rowOf(anii.id).querySelector(".ship-panel"));
+});
+check("los datos de envío guardados sobreviven al viaje de ida y vuelta", () =>
+  assert.ok(rowOf(anii.id).querySelector('[data-ship="fullName"]')));
+
+// Crear una categoría nueva desde el desplegable
+groupSelect(anii.id).value = "__nueva__";
+groupSelect(anii.id).dispatchEvent(new window.Event("change", { bubbles: true }));
+check("«Nueva categoría» abre un campo de texto", () =>
+  assert.ok(rowOf(anii.id).querySelector('[data-field="groupNew"]')));
+
+const nuevo = rowOf(anii.id).querySelector('[data-field="groupNew"]');
+nuevo.value = "CORREOS";
+nuevo.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+await settle(60);
+check("Intro crea la categoría y mueve el pedido", () => {
+  assert.equal(remote.file.orders.find(o => o.id === anii.id).group, "CORREOS");
+  assert.ok([...doc.querySelectorAll("#orders .section-label")].some(e => e.textContent === "CORREOS"));
+});
+
+// Dejarlo como estaba
+groupSelect(anii.id).value = "ENVÍOS";
+groupSelect(anii.id).dispatchEvent(new window.Event("change", { bubbles: true }));
+await settle(60);
+doc.querySelector(`.order[data-id="${anii.id}"] [data-act="done"]`).click();
 
 // --- formulario de alta de pedido -----------------------------------------
 check("el desplegable de productos lista el inventario", () =>

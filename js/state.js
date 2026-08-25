@@ -136,11 +136,28 @@ export function addOrder(data, { ig = "", itemKey = "", group = "" } = {}) {
     note: "",
     shippingInfo: emptyShippingInfo(),
   };
-  const lastOfGroup = data.orders.reduce((last, entry, index) => (entry.group === chosenGroup ? index : last), -1);
-  const orders = lastOfGroup === -1
-    ? [...data.orders, order]
-    : [...data.orders.slice(0, lastOfGroup + 1), order, ...data.orders.slice(lastOfGroup + 1)];
-  return { data: withTimestamp({ ...data, orders }), order };
+  return { data: withTimestamp({ ...data, orders: insertIntoGroup(data.orders, order) }), order };
+}
+
+/* Coloca el pedido justo detrás del último de su bloque, para que la lista quede agrupada. */
+function insertIntoGroup(orders, order) {
+  const lastOfGroup = orders.reduce((last, entry, index) => (entry.group === order.group ? index : last), -1);
+  return lastOfGroup === -1
+    ? [...orders, order]
+    : [...orders.slice(0, lastOfGroup + 1), order, ...orders.slice(lastOfGroup + 1)];
+}
+
+/* Mueve un pedido de bloque. Entrar en ENVÍOS activa el gasto de envío; salir de él lo quita. */
+export function moveOrderToGroup(data, id, group) {
+  const target = String(group).trim();
+  const order = findOrder(data, id);
+  if (!target || !order || order.group === target) return data;
+
+  const shipping =
+    target === SHIPPING_GROUP ? true : order.group === SHIPPING_GROUP ? false : order.shipping;
+  const moved = { ...order, group: target, shipping };
+  const rest = data.orders.filter((entry) => entry.id !== id);
+  return withTimestamp({ ...data, orders: insertIntoGroup(rest, moved) });
 }
 
 /* Clave interna a partir del nombre visible: "Gorros marrón" -> "gorros_marron". */

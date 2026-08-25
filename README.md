@@ -49,7 +49,8 @@ Si se cae la red, se sigue trabajando sobre una copia local y se reintenta hasta
 | 💲 / ❌ | Pagado / no pagado |
 | 📦 / ✅ | Empaquetado / entregado |
 | ✏️ | Abre el panel: nombre, descripción, categoría, artículos y borrar |
-| campo *nombre / nota* | Texto libre bajo cada pedido, se guarda solo |
+| desplegable *Bloque* | Mueve el pedido a otra categoría. Entrar en ENVÍOS activa el gasto y los datos de envío; salir de ENVÍOS los quita. «➕ Nueva categoría…» crea una escribiendo y pulsando Intro |
+| 📝 / ✓ en la nota | La nota está bloqueada hasta pulsar 📝. ✓ o Intro la guardan, Escape descarta el cambio |
 | 📮 en la fila | Solo en pedidos con envío: en rojo si falta algún dato obligatorio, en verde si está listo |
 | bloque *Datos de envío* | Dentro de ✏️ en los pedidos con envío: nombre completo, dirección, ciudad y código postal (obligatorios) + email y teléfono (opcionales) |
 | formulario superior | Alta de pedido: nombre + producto + categoría |
@@ -66,7 +67,7 @@ Los clics sobre un artículo en el panel de edición van sumando unidades (1 →
 
 ```bash
 npm install     # jsdom, solo para los tests
-npm test        # 80 pruebas
+npm test        # 103 pruebas
 npm run serve   # http://127.0.0.1:8777
 ```
 

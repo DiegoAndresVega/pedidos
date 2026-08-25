@@ -2,7 +2,7 @@
 
 import { FILTERS, FLASH_MS, PAY_STATES } from "./config.js";
 import { createGate } from "./gate.js";
-import { renderForms, renderOrders, renderTabs, renderTotals } from "./render.js";
+import { NEW_GROUP_VALUE, renderForms, renderOrders, renderTabs, renderTotals } from "./render.js";
 import * as settings from "./settings.js";
 import {
   addOrder,
@@ -10,6 +10,7 @@ import {
   countOrdersWithItem,
   cycleOrderItem,
   missingShippingFields,
+  moveOrderToGroup,
   normalizeData,
   removeItem,
   removeOrder,
@@ -38,6 +39,8 @@ const ui = {
   data: createEmptyData(),
   editingId: null,
   inventoryEdit: null,
+  noteDraft: null,
+  namingGroupId: null,
   filter: settings.getFilter(),
   isReady: false,
 };
@@ -79,7 +82,7 @@ function showStatus({ state, message }) {
 }
 
 function renderAll() {
-  renderOrders(dom.orders, ui.data, ui.editingId, ui.filter);
+  renderOrders(dom.orders, ui.data, ui.editingId, ui.filter, ui);
   renderTabs(ui.data, dom, ui.filter);
   renderTotals(ui.data, dom, ui.inventoryEdit);
   renderForms(ui.data, dom);
@@ -140,6 +143,10 @@ function orderIdFrom(target) {
 }
 
 dom.orders.addEventListener("click", (event) => {
+  if (event.target.matches(".note[readonly]")) {
+    startNoteEdit(orderIdFrom(event.target));
+    return;
+  }
   const button = event.target.closest("button[data-act]");
   if (!button) return;
   const id = orderIdFrom(button);
@@ -153,7 +160,15 @@ dom.orders.addEventListener("click", (event) => {
     item: () => apply(cycleOrderItem(ui.data, id, button.dataset.item)),
     edit: () => {
       ui.editingId = ui.editingId === id ? null : id;
+      ui.namingGroupId = null;
       renderAll();
+    },
+    "note-edit": () => startNoteEdit(id),
+    "note-save": () => {
+      const input = button.closest(".order").querySelector(".note");
+      const value = input.value;
+      ui.noteDraft = null;
+      apply(updateOrder(ui.data, id, { note: value }));
     },
     done: () => {
       ui.editingId = null;
@@ -181,6 +196,15 @@ dom.orders.addEventListener("change", (event) => {
   if (event.target.dataset.field === "shipping") {
     apply(updateOrder(ui.data, id, { shipping: event.target.checked }));
   }
+  if (event.target.dataset.field === "group") {
+    if (event.target.value === NEW_GROUP_VALUE) {
+      ui.namingGroupId = id;
+      renderAll();
+      focusIn(id, '[data-field="groupNew"]');
+      return;
+    }
+    apply(moveOrderToGroup(ui.data, id, event.target.value));
+  }
 });
 
 /* El texto no repinta la lista: así no se pierde el cursor mientras escribes. */
@@ -195,10 +219,60 @@ dom.orders.addEventListener("input", (event) => {
     return;
   }
 
-  const field = event.target.dataset.act === "note" ? "note" : event.target.dataset.field;
-  if (!["note", "ig", "desc", "group"].includes(field)) return;
+  if (event.target.dataset.act === "note") {
+    ui.noteDraft = { id, value: event.target.value };
+    return;
+  }
+
+  const field = event.target.dataset.field;
+  if (!["ig", "desc"].includes(field)) return;
   apply(updateOrder(ui.data, id, { [field]: event.target.value }), { rerender: false });
 });
+
+function startNoteEdit(id) {
+  const order = ui.data.orders.find((entry) => entry.id === id);
+  if (!order) return;
+  ui.noteDraft = { id, value: order.note };
+  renderAll();
+  focusIn(id, ".note");
+}
+
+function focusIn(id, selector) {
+  const field = dom.orders.querySelector(`.order[data-id="${id}"] ${selector}`);
+  field?.focus();
+  if (field?.setSelectionRange) field.setSelectionRange(field.value.length, field.value.length);
+}
+
+/* Intro guarda, Escape descarta: ni la nota ni la categoría nueva se pierden por un clic. */
+dom.orders.addEventListener("keydown", (event) => {
+  const id = orderIdFrom(event.target);
+  if (!id || (event.key !== "Enter" && event.key !== "Escape")) return;
+
+  if (event.target.dataset.field === "groupNew") {
+    event.preventDefault();
+    if (event.key === "Enter") return commitNewGroup(id, event.target.value);
+    ui.namingGroupId = null;
+    renderAll();
+    return;
+  }
+
+  if (event.target.dataset.act === "note") {
+    event.preventDefault();
+    if (event.key === "Escape") {
+      ui.noteDraft = null;
+      renderAll();
+      return;
+    }
+    event.target.closest(".order").querySelector('[data-act="note-save"]')?.click();
+  }
+});
+
+function commitNewGroup(id, value) {
+  const name = String(value).trim();
+  ui.namingGroupId = null;
+  if (!name) return renderAll();
+  apply(moveOrderToGroup(ui.data, id, name));
+}
 
 /* Actualiza el aviso de envío sin repintar la fila, para no perder el cursor. */
 function refreshShippingState(id) {

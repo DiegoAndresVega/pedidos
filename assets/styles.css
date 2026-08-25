@@ -377,3 +377,28 @@
   @media(max-width:520px){
     .tabs .eyebrow{margin-left:0;flex:1 1 100%}
   }
+
+  /* ---------- nota con botón de editar / guardar ---------- */
+  .note-wrap{flex:1;min-width:150px;display:flex;gap:6px;align-items:center}
+  .note-wrap .note{flex:1;min-width:0}
+  .note-wrap .note[readonly]{cursor:pointer;border-color:#241f1c;color:var(--muted)}
+  .note-wrap .note[readonly]:hover{border-color:var(--line);color:var(--ink)}
+  .note-wrap.editing .note{border-color:var(--accent);color:var(--ink)}
+  .note-btn{
+    background:#181513;border:1px solid var(--line);border-radius:6px;cursor:pointer;
+    font-size:13px;line-height:1;padding:4px 8px;filter:grayscale(1) opacity(.5);transition:.15s;
+  }
+  .note-btn:hover{filter:none;border-color:var(--accent)}
+  .note-wrap.editing .note-btn{
+    filter:none;background:var(--money);border-color:var(--money);color:#0d0d0d;font-weight:700;
+  }
+
+  /* ---------- bloque como desplegable ---------- */
+  .edit-panel select{
+    background:#181513;border:1px solid var(--line);border-radius:6px;color:var(--ink);
+    font-family:inherit;font-size:13px;padding:6px 26px 6px 9px;letter-spacing:0;text-transform:none;
+    width:100%;cursor:pointer;appearance:none;
+    background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+    background-position:calc(100% - 15px) 14px,calc(100% - 10px) 14px;background-size:5px 5px;background-repeat:no-repeat;
+  }
+  .edit-panel select:focus{outline:none;border-color:var(--accent)}

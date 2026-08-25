@@ -51,10 +51,26 @@ function shippingFieldset(order) {
       </div>`;
 }
 
-function editPanel(data, order) {
-  const groups = listGroups(data)
-    .map((group) => `<option value="${esc(group)}"></option>`)
+export const NEW_GROUP_VALUE = "__nueva__";
+
+/* Bloque: desplegable con las categorías que ya existen, sin escribir a mano. */
+function groupField(data, order, isNaming) {
+  if (isNaming) {
+    return `
+        <label>Nueva categoría
+          <input type="text" data-field="groupNew" value="" placeholder="Escribe y pulsa Intro" autocomplete="off">
+        </label>`;
+  }
+  const options = listGroups(data)
+    .map((group) => `<option value="${esc(group)}"${group === order.group ? " selected" : ""}>${esc(group)}</option>`)
     .join("");
+  return `
+        <label>Bloque
+          <select data-field="group">${options}<option value="${NEW_GROUP_VALUE}">➕ Nueva categoría…</option></select>
+        </label>`;
+}
+
+function editPanel(data, order, isNamingGroup) {
   return `
     <div class="edit-panel">
       <div class="edit-grid">
@@ -64,11 +80,8 @@ function editPanel(data, order) {
         <label>Descripción
           <input type="text" data-field="desc" value="${esc(order.desc)}" placeholder="Gorro azul // Riñonera negra">
         </label>
-        <label>Bloque
-          <input type="text" data-field="group" value="${esc(order.group)}" list="grupos-lista" placeholder="EN MANO">
-        </label>
+        ${groupField(data, order, isNamingGroup)}
       </div>
-      <datalist id="grupos-lista">${groups}</datalist>
       <div class="chips">${itemChips(data, order)}</div>
       ${shippingFieldset(order)}
       <div class="edit-actions">
@@ -89,7 +102,21 @@ function shippingFlag(order) {
     : `<span class="ship-flag ok">📮 envío listo</span>`;
 }
 
-function orderRow(data, order, isEditing) {
+/* La nota se escribe solo tras pulsar 📝 y no viaja al repositorio hasta pulsar ✓. */
+function noteField(order, noteDraft) {
+  const isEditing = noteDraft?.id === order.id;
+  const value = isEditing ? noteDraft.value : order.note;
+  return `
+          <span class="note-wrap${isEditing ? " editing" : ""}">
+            <input class="note" data-act="note" placeholder="nombre / nota…"
+                   value="${esc(value)}" ${isEditing ? "" : "readonly"}>
+            <button type="button" class="note-btn" data-act="${isEditing ? "note-save" : "note-edit"}"
+                    title="${isEditing ? "Guardar nota" : "Editar nota"}">${isEditing ? "✓" : "📝"}</button>
+          </span>`;
+}
+
+function orderRow(data, order, isEditing, ui) {
+  const { noteDraft, namingGroupId } = ui;
   const price = orderPrice(data, order);
   const title = order.desc || "(sin descripción)";
   const handle = order.ig || "(sin nombre)";
@@ -99,11 +126,11 @@ function orderRow(data, order, isEditing) {
       <div class="body">
         <div class="desc">${esc(title)} — <span class="handle">${esc(handle)}</span></div>
         <div class="meta">
-          <input class="note" data-act="note" placeholder="nombre / nota…" value="${esc(order.note)}">
+          ${noteField(order, noteDraft)}
           ${statusButtons(order)}
         </div>
         <div class="price">${price}€${order.shipping ? ` (incl. envío ${data.prices.envio}€)` : ""}${shippingFlag(order)}</div>
-        ${isEditing ? editPanel(data, order) : ""}
+        ${isEditing ? editPanel(data, order, namingGroupId === order.id) : ""}
       </div>
     </div>`;
 }
@@ -140,8 +167,15 @@ export function renderTabs(data, elements, filter) {
   });
 }
 
-export function renderOrders(container, data, editingId, filter = FILTERS.all) {
-  const visible = filterOrders(data.orders, filter);
+export function renderOrders(container, data, editingId, filter = FILTERS.all, ui = {}) {
+  const groupOrder = listGroups(data);
+  const visible = filterOrders(data.orders, filter)
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) => {
+      const byGroup = groupOrder.indexOf(a.entry.group) - groupOrder.indexOf(b.entry.group);
+      return byGroup !== 0 ? byGroup : a.index - b.index;
+    })
+    .map(({ entry }) => entry);
   if (!visible.length) {
     container.innerHTML = `<div class="empty">${esc(EMPTY_TEXTS[filter] ?? EMPTY_TEXTS[FILTERS.all])}</div>`;
     return;
@@ -154,7 +188,7 @@ export function renderOrders(container, data, editingId, filter = FILTERS.all) {
         ? `<div class="section-label">${esc(order.group)}</div>`
         : "";
       lastGroup = order.group || lastGroup;
-      return heading + orderRow(data, order, order.id === editingId);
+      return heading + orderRow(data, order, order.id === editingId, ui);
     })
     .join("");
   container.innerHTML = html;
