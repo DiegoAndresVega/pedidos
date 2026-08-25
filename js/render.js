@@ -1,7 +1,7 @@
 /* Construcción del DOM. No modifica datos: solo los pinta. */
 
 import { FILTERS, PAY_STATES } from "./config.js";
-import { computeTotals, listGroups, missingShippingFields, orderPrice, SHIPPING_FIELDS } from "./state.js";
+import { computeTotals, isPickupOrder, listGroups, missingShippingFields, orderPrice, SHIPPING_FIELDS } from "./state.js";
 
 function esc(value) {
   return String(value ?? "")
@@ -12,12 +12,26 @@ function esc(value) {
     .replaceAll("'", "&#39;");
 }
 
+/* Solo los envíos llevan etiqueta; solo las retiradas se dejan en el local. */
+function stageButtons(order, on) {
+  const ticket = order.shipping
+    ? `<button type="button" data-act="label" class="${on(order.labelPrinted).trim()}" title="Etiqueta impresa">🎫</button>`
+    : "";
+  const farmer = isPickupOrder(order)
+    ? `<button type="button" data-act="drop" class="${on(order.dropped).trim()}" title="Depositado en el local de recogida">🧑🏻‍🌾</button>`
+    : "";
+  return { ticket, farmer };
+}
+
 function statusButtons(order) {
   const on = (isOn) => (isOn ? " on" : "");
+  const { ticket, farmer } = stageButtons(order, on);
   return `
     <div class="status">
       <button type="button" data-act="pay" class="${on(order.pay === PAY_STATES.paid).trim()}" title="Pagado"><span class="dollar">$</span></button>
+      ${ticket}
       <button type="button" data-act="pack" class="${on(order.packed).trim()}" title="Empaquetado">📦</button>
+      ${farmer}
       <button type="button" data-act="deliver" class="${on(order.delivered).trim()}" title="Entregado">✅</button>
       <button type="button" data-act="unpay" class="${on(order.pay === PAY_STATES.unpaid).trim()}" title="No pagado">❌</button>
       <button type="button" data-act="edit" class="edit" title="Editar pedido">✏️</button>
@@ -259,6 +273,24 @@ function fillSelect(select, options) {
   select.innerHTML = next;
   const stillThere = options.some((option) => option.value === previous);
   select.value = stillThere ? previous : options[0]?.value ?? "";
+}
+
+/* Productos ya apuntados al pedido que se está creando. Cada chip quita una unidad. */
+export function renderDraftItems(container, data, keys) {
+  const valid = keys.filter((key) => Object.hasOwn(data.items, key));
+  container.hidden = valid.length === 0;
+  if (!valid.length) {
+    container.innerHTML = "";
+    return;
+  }
+  const counts = valid.reduce((acc, key) => ({ ...acc, [key]: (acc[key] ?? 0) + 1 }), {});
+  const chips = Object.entries(counts)
+    .map(([key, count]) => {
+      const label = count > 1 ? `${esc(data.items[key].label)} ×${count}` : esc(data.items[key].label);
+      return `<button type="button" class="chip on" data-draft="${esc(key)}" title="Quitar una unidad">${label} ✕</button>`;
+    })
+    .join("");
+  container.innerHTML = `<span class="draft-label">En este pedido</span><div class="chips">${chips}</div>`;
 }
 
 export function renderForms(data, elements) {

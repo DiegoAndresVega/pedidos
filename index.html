@@ -63,6 +63,8 @@
   <span>💲 Pagado</span>
   <span>✅ Entregado</span>
   <span>📦 Empaquetado</span>
+  <span>🎫 Etiqueta impresa (envíos)</span>
+  <span>🧑🏻‍🌾 Dejado en el local (retirada)</span>
   <span>❌ No pagado</span>
   <span>✏️ Editar nombre, artículos o bloque</span>
   <span>📮 Datos de envío</span>
@@ -86,10 +88,12 @@
       <label>Producto
         <select id="newOrderItem" required></select>
       </label>
+      <button type="button" class="tbtn add-more" id="addProductBtn" title="Añadir otro producto a este pedido">➕</button>
       <label>Categoría
         <select id="newOrderGroup" required></select>
       </label>
       <button type="submit" class="tbtn primary">+ Añadir pedido</button>
+      <div class="draft-items" id="draftItems" hidden></div>
       <p class="add-msg" id="addOrderMsg" hidden></p>
     </form>
 

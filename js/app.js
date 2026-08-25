@@ -1,8 +1,8 @@
 /* Arranque y conexión entre datos, DOM y sincronización. */
 
-import { FILTERS, FLASH_MS, PAY_STATES } from "./config.js";
+import { FILTERS, FLASH_MS, MAX_ITEM_COPIES, PAY_STATES } from "./config.js";
 import { createGate } from "./gate.js";
-import { NEW_GROUP_VALUE, renderForms, renderOrders, renderTabs, renderTotals } from "./render.js";
+import { NEW_GROUP_VALUE, renderDraftItems, renderForms, renderOrders, renderTabs, renderTotals } from "./render.js";
 import * as settings from "./settings.js";
 import {
   addOrder,
@@ -31,6 +31,7 @@ const dom = {
   hint: document.getElementById("priceHint"),
   newOrderItem: document.getElementById("newOrderItem"),
   newOrderGroup: document.getElementById("newOrderGroup"),
+  draftItems: document.getElementById("draftItems"),
   itemsDatalist: document.getElementById("articulos-lista"),
   tabs: document.getElementById("orderTabs"),
 };
@@ -41,6 +42,8 @@ const ui = {
   inventoryEdit: null,
   noteDraft: null,
   namingGroupId: null,
+  /* Artículos apuntados al pedido que aún no se ha creado. */
+  draftItems: [],
   filter: settings.getFilter(),
   isReady: false,
 };
@@ -86,6 +89,7 @@ function renderAll() {
   renderTabs(ui.data, dom, ui.filter);
   renderTotals(ui.data, dom, ui.inventoryEdit);
   renderForms(ui.data, dom);
+  renderDraftItems(dom.draftItems, ui.data, ui.draftItems);
   dom.hint.textContent = Object.values(ui.data.items)
     .map((item) => `${item.label} ${item.price}€`)
     .join(" · ") + ` · Envío ${ui.data.prices.envio}€/paquete`;
@@ -156,6 +160,8 @@ dom.orders.addEventListener("click", (event) => {
     pay: () => apply(togglePay(ui.data, id, PAY_STATES.paid)),
     unpay: () => apply(togglePay(ui.data, id, PAY_STATES.unpaid)),
     pack: () => apply(updateOrder(ui.data, id, { packed: !findChecked(id, "packed") })),
+    label: () => apply(updateOrder(ui.data, id, { labelPrinted: !findChecked(id, "labelPrinted") })),
+    drop: () => apply(updateOrder(ui.data, id, { dropped: !findChecked(id, "dropped") })),
     deliver: () => apply(updateOrder(ui.data, id, { delivered: !findChecked(id, "delivered") })),
     item: () => apply(cycleOrderItem(ui.data, id, button.dataset.item)),
     edit: () => {
@@ -368,17 +374,55 @@ function showFormMessage(element, text, isError = false) {
 
 const addOrderForm = document.getElementById("addOrderForm");
 const addOrderMsg = document.getElementById("addOrderMsg");
+const addProductBtn = document.getElementById("addProductBtn");
+
+function setDraftItems(keys) {
+  ui.draftItems = keys;
+  renderDraftItems(dom.draftItems, ui.data, ui.draftItems);
+}
+
+/* Sin borrador, el pedido lleva lo que marque el desplegable: el alta de un solo
+   producto sigue siendo un clic. */
+function draftForSubmit() {
+  if (ui.draftItems.length) return ui.draftItems;
+  return dom.newOrderItem.value ? [dom.newOrderItem.value] : [];
+}
+
+/* ➕ apunta el producto elegido y deja el desplegable listo para el siguiente. */
+addProductBtn.addEventListener("click", () => {
+  const key = dom.newOrderItem.value;
+  if (!Object.hasOwn(ui.data.items, key)) {
+    return showFormMessage(addOrderMsg, "Añade antes un artículo al inventario.", true);
+  }
+  if (ui.draftItems.filter((entry) => entry === key).length >= MAX_ITEM_COPIES) {
+    return showFormMessage(addOrderMsg, `Como mucho ${MAX_ITEM_COPIES} unidades del mismo artículo.`, true);
+  }
+  setDraftItems([...ui.draftItems, key]);
+  showFormMessage(addOrderMsg, `${ui.data.items[key].label} apuntado. Pulsa «+ Añadir pedido» cuando termines.`);
+  dom.newOrderItem.focus();
+});
+
+/* Un clic en el chip quita una unidad del borrador. */
+dom.draftItems.addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-draft]");
+  if (!chip) return;
+  const last = ui.draftItems.lastIndexOf(chip.dataset.draft);
+  if (last === -1) return;
+  setDraftItems([...ui.draftItems.slice(0, last), ...ui.draftItems.slice(last + 1)]);
+});
+
 addOrderForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const igField = document.getElementById("newOrderIg");
   const ig = igField.value.trim();
-  const itemKey = dom.newOrderItem.value;
+  const items = draftForSubmit();
   const group = dom.newOrderGroup.value;
 
   if (!ig) return showFormMessage(addOrderMsg, "Escribe el nombre o el IG.", true);
-  if (!itemKey) return showFormMessage(addOrderMsg, "Añade antes un artículo al inventario.", true);
+  if (!items.length) return showFormMessage(addOrderMsg, "Añade antes un artículo al inventario.", true);
 
-  const { data, order } = addOrder(ui.data, { ig, itemKey, group });
+  const { data, order } = addOrder(ui.data, { ig, items, group });
+  setDraftItems([]);
   apply(data);
   igField.value = "";
   igField.focus();

@@ -533,6 +533,105 @@ doc.querySelector(`.order[data-id="${newId}"] [data-act="remove"]`).click();
 await settle(60);
 check("borrar pedido se guarda", () => assert.equal(remote.file.orders.length, 25));
 
+// --- varios productos en un mismo pedido -----------------------------------
+const draftBox = doc.getElementById("draftItems");
+const addProduct = (key) => {
+  doc.getElementById("newOrderItem").value = key;
+  doc.getElementById("addProductBtn").click();
+};
+
+check("el borrador de productos empieza oculto", () => assert.equal(draftBox.hidden, true));
+
+addProduct("rin_rosa");
+addProduct("rin_rosa");
+addProduct("gorro_azul");
+check("➕ apunta los productos y agrupa las repeticiones", () => {
+  assert.equal(draftBox.hidden, false);
+  const chips = [...draftBox.querySelectorAll("[data-draft]")].map(c => c.textContent.trim());
+  assert.deepEqual(chips, ["Riñoneras rosa ×2 ✕", "Gorros azul ✕"]);
+});
+
+addProduct("gorro_celeste");
+draftBox.querySelector('[data-draft="gorro_celeste"]').click();
+check("pulsar un chip quita una unidad del borrador", () =>
+  assert.equal(draftBox.querySelector('[data-draft="gorro_celeste"]'), null));
+
+for (let i = 0; i < 4; i += 1) addProduct("gorro_azul");
+check("no deja pasar del máximo de unidades por artículo", () => {
+  assert.equal(draftBox.querySelector('[data-draft="gorro_azul"]').textContent.trim(), "Gorros azul ×4 ✕");
+  assert.match(doc.getElementById("addOrderMsg").textContent, /Como mucho 4/);
+});
+
+doc.getElementById("newOrderIg").value = "PEDIDO DOBLE";
+doc.getElementById("newOrderGroup").value = "EN MANO";
+doc.getElementById("addOrderForm").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+await settle(60);
+
+const multi = remote.file.orders.find(o => o.ig === "PEDIDO DOBLE");
+check("el pedido guarda todos los productos apuntados", () => {
+  assert.ok(multi, "no se creó el pedido con varios productos");
+  assert.equal(multi.items.filter(k => k === "rin_rosa").length, 2);
+  assert.equal(multi.items.filter(k => k === "gorro_azul").length, 4);
+  assert.equal(multi.items.length, 6);
+});
+check("la descripción resume los productos con sus unidades", () =>
+  assert.equal(multi.desc, "Riñoneras rosa ×2 // Gorros azul ×4"));
+check("el precio suma todos los productos", () => {
+  const price = doc.querySelector(`.order[data-id="${multi.id}"] .price`).textContent;
+  assert.match(price, /^220€/);
+});
+check("el borrador se vacía tras crear el pedido", () => {
+  assert.equal(draftBox.hidden, true);
+  assert.equal(draftBox.querySelectorAll("[data-draft]").length, 0);
+});
+
+doc.getElementById("newOrderIg").value = "PEDIDO SIMPLE";
+doc.getElementById("newOrderItem").value = "rin_negra";
+doc.getElementById("newOrderGroup").value = "EN MANO";
+doc.getElementById("addOrderForm").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+await settle(60);
+check("sin borrador sigue valiendo el producto del desplegable", () =>
+  assert.deepEqual(remote.file.orders.find(o => o.ig === "PEDIDO SIMPLE").items, ["rin_negra"]));
+
+// --- 🎫 etiqueta impresa y 🧑🏻‍🌾 dejado en el local -------------------------
+const btnOf = (id, act) => doc.querySelector(`.order[data-id="${id}"] [data-act="${act}"]`);
+
+check("solo los envíos llevan el botón de etiqueta", () => {
+  assert.ok(btnOf("o017", "label"), "falta 🎫 en ENVÍOS");
+  assert.equal(btnOf("o011", "label"), null, "sobra 🎫 en RETIRADA");
+  assert.equal(btnOf("o001", "label"), null, "sobra 🎫 en EN MANO");
+});
+check("solo las retiradas llevan el botón del granjero", () => {
+  assert.ok(btnOf("o011", "drop"), "falta 🧑🏻‍🌾 en RETIRADA");
+  assert.equal(btnOf("o017", "drop"), null, "sobra 🧑🏻‍🌾 en ENVÍOS");
+  assert.equal(btnOf("o001", "drop"), null, "sobra 🧑🏻‍🌾 en EN MANO");
+});
+
+btnOf("o017", "label").click();
+await settle(60);
+check("marcar la etiqueta se guarda en el repositorio", () =>
+  assert.equal(remote.file.orders.find(o => o.id === "o017").labelPrinted, true));
+check("la etiqueta marcada se ve encendida", () =>
+  assert.ok(btnOf("o017", "label").classList.contains("on")));
+
+btnOf("o017", "label").click();
+await settle(60);
+check("volver a pulsar la etiqueta la desmarca", () =>
+  assert.equal(remote.file.orders.find(o => o.id === "o017").labelPrinted, false));
+
+btnOf("o011", "drop").click();
+await settle(60);
+check("marcar el depósito en el local se guarda", () => {
+  assert.equal(remote.file.orders.find(o => o.id === "o011").dropped, true);
+  assert.ok(btnOf("o011", "drop").classList.contains("on"));
+});
+
+check("marcar la etiqueta no toca empaquetado ni entregado", () => {
+  const saved = remote.file.orders.find(o => o.id === "o017");
+  assert.equal(saved.packed, false);
+  assert.equal(saved.delivered, false);
+});
+
 // --- estado de sincronización ----------------------------------------------
 check("la etiqueta muestra sincronizado", () =>
   assert.match(doc.getElementById("savedTag").textContent, /Sincronizad|Guardad/));

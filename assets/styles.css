@@ -291,6 +291,11 @@
   .add-form.inventory label{flex:1 1 90px}
   .add-form.inventory label:first-of-type{flex:2 1 150px}
   #addOrderForm label:nth-of-type(2){flex:1.7 1 190px}
+  .add-form .add-more{padding:8px 12px;font-size:14px;line-height:1.1;flex:0 0 auto}
+  .add-form .add-more:hover{border-color:var(--occ);color:var(--occ)}
+  .add-form .draft-items{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .add-form .draft-items[hidden]{display:none}
+  .draft-items .draft-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
   @media(max-width:620px){.add-form .tbtn.primary{flex:1 1 100%}}
 
   /* ---------- datos de envío ---------- */

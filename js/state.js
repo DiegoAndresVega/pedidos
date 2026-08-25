@@ -87,6 +87,8 @@ function normalizeOrder(rawOrder, index, items) {
     pay: normalizePay(rawOrder?.pay),
     delivered: Boolean(rawOrder?.delivered),
     packed: Boolean(rawOrder?.packed),
+    labelPrinted: Boolean(rawOrder?.labelPrinted),
+    dropped: Boolean(rawOrder?.dropped),
     note: String(rawOrder?.note ?? ""),
     shippingInfo: normalizeShippingInfo(rawOrder?.shippingInfo),
   };
@@ -116,23 +118,39 @@ export function newOrderId() {
   return `o${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-const SHIPPING_GROUP = "ENVÍOS";
+export const SHIPPING_GROUP = "ENVÍOS";
+export const PICKUP_GROUP = "RETIRADA";
+
+/* Los pedidos de RETIRADA se dejan en el local: por eso llevan el 🧑🏻‍🌾. */
+export function isPickupOrder(order) {
+  return order.group === PICKUP_GROUP;
+}
+
+/* "Gorros marrón // Riñoneras rosa ×2" a partir de la lista de artículos. */
+export function describeItems(data, keys) {
+  const counts = keys.reduce((acc, key) => ({ ...acc, [key]: (acc[key] ?? 0) + 1 }), {});
+  return Object.entries(counts)
+    .map(([key, count]) => (count > 1 ? `${data.items[key].label} ×${count}` : data.items[key].label))
+    .join(" // ");
+}
 
 /* Alta de pedido desde el formulario. El bloque de envíos suma el gasto de envío. */
-export function addOrder(data, { ig = "", itemKey = "", group = "" } = {}) {
+export function addOrder(data, { ig = "", items = [], group = "" } = {}) {
   const chosenGroup = group || data.orders.at(-1)?.group || DEFAULT_GROUPS[0];
-  const isKnownItem = Object.hasOwn(data.items, itemKey);
+  const chosenItems = items.filter((key) => Object.hasOwn(data.items, key));
   const order = {
     id: newOrderId(),
     group: chosenGroup,
     ig: String(ig).trim(),
-    desc: isKnownItem ? data.items[itemKey].label : "",
-    items: isKnownItem ? [itemKey] : [],
+    desc: chosenItems.length ? describeItems(data, chosenItems) : "",
+    items: chosenItems,
     shipping: chosenGroup === SHIPPING_GROUP,
     checked: true,
     pay: null,
     delivered: false,
     packed: false,
+    labelPrinted: false,
+    dropped: false,
     note: "",
     shippingInfo: emptyShippingInfo(),
   };

@@ -48,12 +48,14 @@ Si se cae la red, se sigue trabajando sobre una copia local y se reintenta hasta
 | ☑ casilla | Cuenta el pedido en stock y presupuesto (desmarcar lo aparca sin borrarlo) |
 | 💲 / ❌ | Pagado / no pagado |
 | 📦 / ✅ | Empaquetado / entregado |
+| 🎫 | Solo en **ENVÍOS**: la etiqueta del paquete ya está impresa |
+| 🧑🏻‍🌾 | Solo en **RETIRADA**: el paquete ya está dejado en el local donde lo recogen |
 | ✏️ | Abre el panel: nombre, descripción, categoría, artículos y borrar |
 | desplegable *Bloque* | Mueve el pedido a otra categoría. Entrar en ENVÍOS activa el gasto y los datos de envío; salir de ENVÍOS los quita. «➕ Nueva categoría…» crea una escribiendo y pulsando Intro |
 | 📝 / ✓ en la nota | La nota está bloqueada hasta pulsar 📝. ✓ o Intro la guardan, Escape descarta el cambio |
 | 📮 en la fila | Solo en pedidos con envío: en rojo si falta algún dato obligatorio, en verde si está listo |
 | bloque *Datos de envío* | Dentro de ✏️ en los pedidos con envío: nombre completo, dirección, ciudad y código postal (obligatorios) + email y teléfono (opcionales) |
-| formulario superior | Alta de pedido: nombre + producto + categoría |
+| formulario superior | Alta de pedido: nombre + producto + categoría. **➕** apunta el producto elegido y deja el desplegable libre para el siguiente, así un pedido puede llevar varios artículos (hasta 4 unidades de cada uno). Los apuntados salen debajo; pulsar uno le quita una unidad. Sin apuntar nada, se crea con el producto del desplegable |
 | inventario | Una sola lista: `4/6` = quedan 4 de las 6 que había. Los agotados salen en gris y tachados en rojo |
 | ✏️ en el inventario | Elige **Disponible** o **Total**, cambia el número y ✓ Guardar (Enter también vale). 🗑 Borrar elimina el artículo; si está en pedidos, avisa y lo quita de ellos |
 | formulario del inventario | Alta de artículo; si ya existe, suma unidades a su stock |
@@ -67,7 +69,7 @@ Los clics sobre un artículo en el panel de edición van sumando unidades (1 →
 
 ```bash
 npm install     # jsdom, solo para los tests
-npm test        # 103 pruebas
+npm test        # 119 pruebas
 npm run serve   # http://127.0.0.1:8777
 ```
 
