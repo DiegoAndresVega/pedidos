@@ -352,3 +352,28 @@
   }
   .inv-edit input[type=number]:focus{outline:none;border-color:var(--accent)}
   .inv-edit .tbtn{font-size:12px;padding:6px 10px}
+
+  /* ---------- pestañas: todos / pendiente / entregado ---------- */
+  .tabs{
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+    padding:12px 18px;border-bottom:1px solid var(--line);
+  }
+  .tabs .tab{
+    background:#181513;border:1px solid var(--line);border-radius:8px;color:var(--muted);
+    font-family:'Rubik Mono One',monospace;font-size:12px;letter-spacing:.02em;
+    padding:8px 13px;cursor:pointer;transition:.15s;
+    display:inline-flex;align-items:center;gap:7px;
+  }
+  .tabs .tab:hover{color:var(--ink);border-color:var(--accent)}
+  .tabs .tab.on{background:var(--ink);border-color:var(--ink);color:#161311}
+  .tabs .tab-n{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;
+    background:rgba(255,255,255,.07);border-radius:20px;padding:1px 7px;min-width:20px;text-align:center;
+  }
+  .tabs .tab.on .tab-n{background:rgba(0,0,0,.14)}
+  .tabs .eyebrow{
+    margin-left:auto;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);
+  }
+  @media(max-width:520px){
+    .tabs .eyebrow{margin-left:0;flex:1 1 100%}
+  }

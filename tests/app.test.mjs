@@ -174,6 +174,68 @@ check("un artículo sin nombre muestra error y no se guarda", () => {
   assert.equal(doc.getElementById("addItemMsg").hidden, false);
 });
 
+// --- pestañas todos / pendiente / entregado ---------------------------------
+const tab = (name) => doc.querySelector(`#orderTabs .tab[data-filter="${name}"]`);
+const tabCount = (name) => Number(tab(name).querySelector(".tab-n").textContent);
+const visibleRows = () => doc.querySelectorAll("#orders .order").length;
+
+check("hay tres pestañas en la cabecera", () =>
+  assert.deepEqual([...doc.querySelectorAll("#orderTabs .tab")].map(t => t.dataset.filter),
+    ["all", "pending", "delivered"]));
+check("«Todos» está activa al arrancar", () =>
+  assert.equal(tab("all").classList.contains("on"), true));
+check("los contadores reparten los pedidos", () => {
+  assert.equal(tabCount("all"), tabCount("pending") + tabCount("delivered"));
+  assert.equal(tabCount("all"), visibleRows());
+});
+
+const entregadosIniciales = tabCount("delivered");
+tab("delivered").click();
+check("la pestaña Entregado solo muestra los entregados", () => {
+  assert.equal(visibleRows(), entregadosIniciales);
+  assert.equal([...doc.querySelectorAll("#orders .order [data-act=\"deliver\"]")]
+    .every(b => b.classList.contains("on")), true);
+});
+check("cambiar de pestaña marca la nueva como activa", () => {
+  assert.equal(tab("delivered").classList.contains("on"), true);
+  assert.equal(tab("all").classList.contains("on"), false);
+});
+
+tab("pending").click();
+check("la pestaña Pendiente solo muestra los no entregados", () => {
+  assert.equal(visibleRows(), tabCount("pending"));
+  assert.equal([...doc.querySelectorAll("#orders .order [data-act=\"deliver\"]")]
+    .some(b => b.classList.contains("on")), false);
+});
+
+// Marcar entregado desde Pendiente lo mueve de pestaña
+const pendientesAntes = tabCount("pending");
+const moved = doc.querySelector("#orders .order").dataset.id;
+doc.querySelector(`.order[data-id="${moved}"] [data-act="deliver"]`).click();
+await settle(60);
+check("marcar ✅ mueve el pedido a Entregado", () => {
+  assert.equal(tabCount("pending"), pendientesAntes - 1);
+  assert.equal(tabCount("delivered"), entregadosIniciales + 1);
+  assert.equal(doc.querySelector(`#orders .order[data-id="${moved}"]`), null);
+  assert.equal(remote.file.orders.find(o => o.id === moved).delivered, true);
+});
+
+tab("delivered").click();
+check("el pedido movido aparece ya en Entregado", () =>
+  assert.ok(doc.querySelector(`#orders .order[data-id="${moved}"]`)));
+
+// Deshacer y volver a «Todos»
+doc.querySelector(`.order[data-id="${moved}"] [data-act="deliver"]`).click();
+await settle(60);
+check("desmarcar ✅ lo devuelve a Pendiente", () => {
+  assert.equal(tabCount("pending"), pendientesAntes);
+  assert.equal(tabCount("delivered"), entregadosIniciales);
+});
+
+tab("all").click();
+check("«Todos» vuelve a mostrar la lista completa", () =>
+  assert.equal(visibleRows(), tabCount("all")));
+
 // --- editar el inventario ---------------------------------------------------
 const invRow = (name) => [...doc.querySelectorAll("#inventory .inv-row")]
   .find(r => r.querySelector(".name").textContent === name);

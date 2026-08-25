@@ -1,7 +1,7 @@
 /* Acceso a los ajustes locales (token y repositorio de datos).
    Nada de esto viaja al repositorio público: vive solo en este navegador. */
 
-import { DEFAULT_REMOTE, STORAGE_KEYS } from "./config.js";
+import { DEFAULT_FILTER, DEFAULT_REMOTE, FILTERS, STORAGE_KEYS } from "./config.js";
 
 function readRaw(key) {
   try {
@@ -87,4 +87,13 @@ export function getBlurPreference() {
 
 export function setBlurPreference(isOn) {
   return writeRaw(STORAGE_KEYS.blur, isOn ? "1" : "0");
+}
+
+export function getFilter() {
+  const stored = readRaw(STORAGE_KEYS.filter);
+  return Object.hasOwn(FILTERS, stored ?? "") ? stored : DEFAULT_FILTER;
+}
+
+export function setFilter(filter) {
+  return writeRaw(STORAGE_KEYS.filter, Object.hasOwn(FILTERS, filter) ? filter : DEFAULT_FILTER);
 }

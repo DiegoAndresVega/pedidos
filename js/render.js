@@ -1,6 +1,6 @@
 /* Construcción del DOM. No modifica datos: solo los pinta. */
 
-import { PAY_STATES } from "./config.js";
+import { FILTERS, PAY_STATES } from "./config.js";
 import { computeTotals, listGroups, missingShippingFields, orderPrice, SHIPPING_FIELDS } from "./state.js";
 
 function esc(value) {
@@ -108,14 +108,46 @@ function orderRow(data, order, isEditing) {
     </div>`;
 }
 
-export function renderOrders(container, data, editingId) {
-  if (!data.orders.length) {
-    container.innerHTML = `<div class="empty">Todavía no hay pedidos. Pulsa «+ Nuevo pedido».</div>`;
+const FILTER_TESTS = {
+  [FILTERS.all]: () => true,
+  [FILTERS.pending]: (order) => !order.delivered,
+  [FILTERS.delivered]: (order) => order.delivered,
+};
+
+const EMPTY_TEXTS = {
+  [FILTERS.all]: "Todavía no hay pedidos. Añade uno con el formulario de arriba.",
+  [FILTERS.pending]: "No queda ningún pedido pendiente. Todo entregado.",
+  [FILTERS.delivered]: "Todavía no has marcado ningún pedido como entregado ✅.",
+};
+
+export function filterOrders(orders, filter) {
+  return orders.filter(FILTER_TESTS[filter] ?? FILTER_TESTS[FILTERS.all]);
+}
+
+/* Números de cada pestaña, siempre sobre la lista completa. */
+export function renderTabs(data, elements, filter) {
+  const counts = {
+    [FILTERS.all]: data.orders.length,
+    [FILTERS.pending]: filterOrders(data.orders, FILTERS.pending).length,
+    [FILTERS.delivered]: filterOrders(data.orders, FILTERS.delivered).length,
+  };
+  elements.tabs.querySelectorAll(".tab").forEach((tab) => {
+    const isOn = tab.dataset.filter === filter;
+    tab.classList.toggle("on", isOn);
+    tab.setAttribute("aria-selected", String(isOn));
+    tab.querySelector(".tab-n").textContent = counts[tab.dataset.filter] ?? 0;
+  });
+}
+
+export function renderOrders(container, data, editingId, filter = FILTERS.all) {
+  const visible = filterOrders(data.orders, filter);
+  if (!visible.length) {
+    container.innerHTML = `<div class="empty">${esc(EMPTY_TEXTS[filter] ?? EMPTY_TEXTS[FILTERS.all])}</div>`;
     return;
   }
 
   let lastGroup = null;
-  const html = data.orders
+  const html = visible
     .map((order) => {
       const heading = order.group && order.group !== lastGroup
         ? `<div class="section-label">${esc(order.group)}</div>`

@@ -44,6 +44,7 @@ Si se cae la red, se sigue trabajando sobre una copia local y se reintenta hasta
 
 | Elemento | Qué hace |
 |---|---|
+| pestañas **Todos / Pendiente / Entregado** | Filtran la lista. Marcar ✅ mueve el pedido de Pendiente a Entregado. Cada pestaña lleva su contador y la elegida se recuerda en ese navegador |
 | ☑ casilla | Cuenta el pedido en stock y presupuesto (desmarcar lo aparca sin borrarlo) |
 | 💲 / ❌ | Pagado / no pagado |
 | 📦 / ✅ | Empaquetado / entregado |
@@ -65,7 +66,7 @@ Los clics sobre un artículo en el panel de edición van sumando unidades (1 →
 
 ```bash
 npm install     # jsdom, solo para los tests
-npm test        # 70 pruebas
+npm test        # 80 pruebas
 npm run serve   # http://127.0.0.1:8777
 ```
 

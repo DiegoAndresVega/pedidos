@@ -71,7 +71,12 @@
 
 <div class="grid">
   <div class="card">
-    <h2>Pedidos <span class="eyebrow" id="checkedCount">0 activos</span></h2>
+    <div class="tabs" id="orderTabs" role="tablist" aria-label="Filtrar pedidos">
+      <button type="button" class="tab" data-filter="all" role="tab">Todos <span class="tab-n">0</span></button>
+      <button type="button" class="tab" data-filter="pending" role="tab">Pendiente <span class="tab-n">0</span></button>
+      <button type="button" class="tab" data-filter="delivered" role="tab">Entregado <span class="tab-n">0</span></button>
+      <span class="eyebrow" id="checkedCount">0 activos</span>
+    </div>
 
     <form class="add-form" id="addOrderForm">
       <label>Nombre / IG

@@ -12,7 +12,12 @@ export const STORAGE_KEYS = Object.freeze({
   remote: "pedidos_gh_remote",
   cache: "pedidos_cache_v2",
   blur: "pedidos_blur",
+  filter: "pedidos_filtro",
 });
+
+/* Pestañas de la lista de pedidos. */
+export const FILTERS = Object.freeze({ all: "all", pending: "pending", delivered: "delivered" });
+export const DEFAULT_FILTER = FILTERS.all;
 
 export const GITHUB_API = "https://api.github.com";
 

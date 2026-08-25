@@ -1,8 +1,8 @@
 /* Arranque y conexión entre datos, DOM y sincronización. */
 
-import { FLASH_MS, PAY_STATES } from "./config.js";
+import { FILTERS, FLASH_MS, PAY_STATES } from "./config.js";
 import { createGate } from "./gate.js";
-import { renderForms, renderOrders, renderTotals } from "./render.js";
+import { renderForms, renderOrders, renderTabs, renderTotals } from "./render.js";
 import * as settings from "./settings.js";
 import {
   addOrder,
@@ -31,9 +31,16 @@ const dom = {
   newOrderItem: document.getElementById("newOrderItem"),
   newOrderGroup: document.getElementById("newOrderGroup"),
   itemsDatalist: document.getElementById("articulos-lista"),
+  tabs: document.getElementById("orderTabs"),
 };
 
-const ui = { data: createEmptyData(), editingId: null, inventoryEdit: null, isReady: false };
+const ui = {
+  data: createEmptyData(),
+  editingId: null,
+  inventoryEdit: null,
+  filter: settings.getFilter(),
+  isReady: false,
+};
 
 const sync = createSync({
   getRemote: settings.getRemote,
@@ -72,7 +79,8 @@ function showStatus({ state, message }) {
 }
 
 function renderAll() {
-  renderOrders(dom.orders, ui.data, ui.editingId);
+  renderOrders(dom.orders, ui.data, ui.editingId, ui.filter);
+  renderTabs(ui.data, dom, ui.filter);
   renderTotals(ui.data, dom, ui.inventoryEdit);
   renderForms(ui.data, dom);
   dom.hint.textContent = Object.values(ui.data.items)
@@ -86,7 +94,10 @@ function apply(nextData, { rerender = true } = {}) {
   settings.setCachedData(nextData);
   sync.queue(nextData);
   if (rerender) renderAll();
-  else renderTotals(ui.data, dom, ui.inventoryEdit);
+  else {
+    renderTabs(ui.data, dom, ui.filter);
+    renderTotals(ui.data, dom, ui.inventoryEdit);
+  }
 }
 
 /* ---------- carga ---------- */
@@ -207,6 +218,17 @@ function refreshShippingState(id) {
   if (panel) panel.classList.toggle("incomplete", missing > 0);
   if (state) state.textContent = missing ? `Faltan ${missing} de 4 obligatorios` : "Datos completos";
 }
+
+/* ---------- pestañas: todos / pendiente / entregado ---------- */
+
+dom.tabs.addEventListener("click", (event) => {
+  const tab = event.target.closest(".tab");
+  if (!tab || tab.dataset.filter === ui.filter) return;
+  ui.filter = Object.hasOwn(FILTERS, tab.dataset.filter) ? tab.dataset.filter : FILTERS.all;
+  ui.editingId = null;
+  settings.setFilter(ui.filter);
+  renderAll();
+});
 
 /* ---------- edición del inventario ---------- */
 
