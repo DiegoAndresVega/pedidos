@@ -1,7 +1,18 @@
 /* Construcción del DOM. No modifica datos: solo los pinta. */
 
 import { FILTERS, PAY_STATES } from "./config.js";
-import { computeTotals, isPickupOrder, listGroups, missingShippingFields, orderPrice, SHIPPING_FIELDS } from "./state.js";
+import {
+  computeTotals,
+  HAND_GROUP,
+  isPickupOrder,
+  listGroups,
+  missingShippingFields,
+  orderPrice,
+  PICKUP_GROUP,
+  REQUIRED_SHIPPING_COUNT,
+  SHIPPING_FIELDS,
+  SHIPPING_GROUP,
+} from "./state.js";
 
 function esc(value) {
   return String(value ?? "")
@@ -51,7 +62,7 @@ function itemChips(data, order) {
 function shippingFieldset(order) {
   if (!order.shipping) return "";
   const missing = missingShippingFields(order).length;
-  const state = missing ? `Faltan ${missing} de 4 obligatorios` : "Datos completos";
+  const state = missing ? `Faltan ${missing} de ${REQUIRED_SHIPPING_COUNT} obligatorios` : "Datos completos";
   const inputs = SHIPPING_FIELDS.map((field) => `
         <label class="${field.required ? "req" : ""}">${esc(field.label)}${field.required ? " *" : ""}
           <input type="${field.type}" data-ship="${esc(field.key)}"
@@ -109,11 +120,27 @@ function editPanel(data, order, isNamingGroup) {
     </div>`;
 }
 
-function shippingFlag(order) {
+function shippingFlag(order, isInfoOpen) {
   if (!order.shipping) return "";
-  return missingShippingFields(order).length
+  const flag = missingShippingFields(order).length
     ? `<span class="ship-flag missing">📮 faltan datos de envío</span>`
     : `<span class="ship-flag ok">📮 envío listo</span>`;
+  const label = isInfoOpen ? "✕ Cerrar" : "📋 Ver info";
+  return `${flag}<button type="button" class="info-btn${isInfoOpen ? " on" : ""}" data-act="info">${label}</button>`;
+}
+
+/* Datos de envío en modo lectura, para consultarlos sin abrir la edición. */
+function infoPanel(order) {
+  const rows = SHIPPING_FIELDS.map((field) => {
+    const value = order.shippingInfo?.[field.key] ?? "";
+    const isMissing = field.required && !value;
+    return `
+          <div class="info-row${isMissing ? " missing" : ""}">
+            <dt>${esc(field.label)}</dt><dd>${value ? esc(value) : "—"}</dd>
+          </div>`;
+  }).join("");
+  return `
+      <dl class="info-panel">${rows}</dl>`;
 }
 
 /* La nota se escribe solo tras pulsar 📝 y no viaja al repositorio hasta pulsar ✓. */
@@ -131,6 +158,7 @@ function noteField(order, noteDraft) {
 
 function orderRow(data, order, isEditing, ui) {
   const { noteDraft, namingGroupId } = ui;
+  const isInfoOpen = order.shipping && ui.infoId === order.id;
   const price = orderPrice(data, order);
   const title = order.desc || "(sin descripción)";
   const handle = order.ig || "(sin nombre)";
@@ -143,7 +171,8 @@ function orderRow(data, order, isEditing, ui) {
           ${noteField(order, noteDraft)}
           ${statusButtons(order)}
         </div>
-        <div class="price">${price}€${order.shipping ? ` (incl. envío ${data.prices.envio}€)` : ""}${shippingFlag(order)}</div>
+        <div class="price">${price}€${order.shipping ? ` (incl. envío ${data.prices.envio}€)` : ""}${shippingFlag(order, isInfoOpen)}</div>
+        ${isInfoOpen ? infoPanel(order) : ""}
         ${isEditing ? editPanel(data, order, namingGroupId === order.id) : ""}
       </div>
     </div>`;
@@ -152,16 +181,25 @@ function orderRow(data, order, isEditing, ui) {
 const FILTER_TESTS = {
   [FILTERS.all]: () => true,
   [FILTERS.pending]: (order) => !order.delivered,
+  /* Todo lo que aún no está cobrado, marcado con ❌ o sin marcar todavía. */
+  [FILTERS.unpaid]: (order) => order.pay !== PAY_STATES.paid,
   /* Lo que sigue en casa sin empaquetar: si ya está entregado, no hay nada que empaquetar. */
   [FILTERS.topack]: (order) => !order.packed && !order.delivered,
   [FILTERS.delivered]: (order) => order.delivered,
+  [FILTERS.hand]: (order) => order.group === HAND_GROUP,
+  [FILTERS.barn]: (order) => order.group === PICKUP_GROUP,
+  [FILTERS.shipping]: (order) => order.group === SHIPPING_GROUP,
 };
 
 const EMPTY_TEXTS = {
   [FILTERS.all]: "Todavía no hay pedidos. Añade uno con el formulario de arriba.",
   [FILTERS.pending]: "No queda ningún pedido pendiente. Todo entregado.",
+  [FILTERS.unpaid]: "No queda nada por cobrar 💲.",
   [FILTERS.topack]: "No queda nada por empaquetar 📦.",
   [FILTERS.delivered]: "Todavía no has marcado ningún pedido como entregado ✅.",
+  [FILTERS.hand]: `Ningún pedido en ${HAND_GROUP}.`,
+  [FILTERS.barn]: `Ningún pedido en ${PICKUP_GROUP}.`,
+  [FILTERS.shipping]: `Ningún pedido en ${SHIPPING_GROUP}.`,
 };
 
 export function filterOrders(orders, filter) {
@@ -291,6 +329,19 @@ export function renderDraftItems(container, data, keys) {
     })
     .join("");
   container.innerHTML = `<span class="draft-label">En este pedido</span><div class="chips">${chips}</div>`;
+}
+
+/* Tras crear un envío se ofrece rellenar los datos en el momento o dejarlo para luego. */
+export function renderShipPrompt(container, order) {
+  container.hidden = !order;
+  if (!order) {
+    container.innerHTML = "";
+    return;
+  }
+  container.innerHTML = `
+      <span class="ship-prompt-text">📮 <b>${esc(order.ig)}</b> es un envío: aún le faltan los datos de entrega.</span>
+      <button type="button" class="tbtn primary" data-ship-prompt="now">Rellenar ahora</button>
+      <button type="button" class="tbtn" data-ship-prompt="later">Dejarlo para luego</button>`;
 }
 
 export function renderForms(data, elements) {

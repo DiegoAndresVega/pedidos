@@ -2,7 +2,15 @@
 
 import { FILTERS, FLASH_MS, MAX_ITEM_COPIES, PAY_STATES } from "./config.js";
 import { createGate } from "./gate.js";
-import { NEW_GROUP_VALUE, renderDraftItems, renderForms, renderOrders, renderTabs, renderTotals } from "./render.js";
+import {
+  NEW_GROUP_VALUE,
+  renderDraftItems,
+  renderForms,
+  renderOrders,
+  renderShipPrompt,
+  renderTabs,
+  renderTotals,
+} from "./render.js";
 import * as settings from "./settings.js";
 import {
   addOrder,
@@ -14,6 +22,7 @@ import {
   normalizeData,
   removeItem,
   removeOrder,
+  REQUIRED_SHIPPING_COUNT,
   setItemQuantity,
   togglePay,
   updateOrder,
@@ -32,6 +41,7 @@ const dom = {
   newOrderItem: document.getElementById("newOrderItem"),
   newOrderGroup: document.getElementById("newOrderGroup"),
   draftItems: document.getElementById("draftItems"),
+  shipPrompt: document.getElementById("shipPrompt"),
   itemsDatalist: document.getElementById("articulos-lista"),
   tabs: document.getElementById("orderTabs"),
 };
@@ -44,6 +54,10 @@ const ui = {
   namingGroupId: null,
   /* Artículos apuntados al pedido que aún no se ha creado. */
   draftItems: [],
+  /* Pedido con el panel de «Ver info» abierto. */
+  infoId: null,
+  /* Envío recién creado al que todavía se le puede rellenar la dirección. */
+  shipPromptOrder: null,
   filter: settings.getFilter(),
   isReady: false,
 };
@@ -90,6 +104,7 @@ function renderAll() {
   renderTotals(ui.data, dom, ui.inventoryEdit);
   renderForms(ui.data, dom);
   renderDraftItems(dom.draftItems, ui.data, ui.draftItems);
+  renderShipPrompt(dom.shipPrompt, ui.shipPromptOrder);
   dom.hint.textContent = Object.values(ui.data.items)
     .map((item) => `${item.label} ${item.price}€`)
     .join(" · ") + ` · Envío ${ui.data.prices.envio}€/paquete`;
@@ -162,7 +177,11 @@ dom.orders.addEventListener("click", (event) => {
     pack: () => apply(updateOrder(ui.data, id, { packed: !findChecked(id, "packed") })),
     label: () => apply(updateOrder(ui.data, id, { labelPrinted: !findChecked(id, "labelPrinted") })),
     drop: () => apply(updateOrder(ui.data, id, { dropped: !findChecked(id, "dropped") })),
-    deliver: () => apply(updateOrder(ui.data, id, { delivered: !findChecked(id, "delivered") })),
+    deliver: () => toggleDelivered(id),
+    info: () => {
+      ui.infoId = ui.infoId === id ? null : id;
+      renderAll();
+    },
     item: () => apply(cycleOrderItem(ui.data, id, button.dataset.item)),
     edit: () => {
       ui.editingId = ui.editingId === id ? null : id;
@@ -191,6 +210,17 @@ dom.orders.addEventListener("click", (event) => {
 
 function findChecked(id, field) {
   return Boolean(ui.data.orders.find((order) => order.id === id)?.[field]);
+}
+
+/* ✅ cambia el estado más visible de la lista: se confirma para no tocarlo sin querer. */
+function toggleDelivered(id) {
+  const order = ui.data.orders.find((entry) => entry.id === id);
+  if (!order) return;
+  const question = order.delivered
+    ? `¿Desmarcar «${order.desc || order.ig}» como entregado?`
+    : `¿Marcar «${order.desc || order.ig}» como entregado?`;
+  if (!confirm(question)) return;
+  apply(updateOrder(ui.data, id, { delivered: !order.delivered }));
 }
 
 dom.orders.addEventListener("change", (event) => {
@@ -296,7 +326,9 @@ function refreshShippingState(id) {
   const panel = row.querySelector(".ship-panel");
   const state = row.querySelector(".ship-state");
   if (panel) panel.classList.toggle("incomplete", missing > 0);
-  if (state) state.textContent = missing ? `Faltan ${missing} de 4 obligatorios` : "Datos completos";
+  if (state) {
+    state.textContent = missing ? `Faltan ${missing} de ${REQUIRED_SHIPPING_COUNT} obligatorios` : "Datos completos";
+  }
 }
 
 /* ---------- pestañas: todos / pendiente / entregado ---------- */
@@ -423,11 +455,32 @@ addOrderForm.addEventListener("submit", (event) => {
 
   const { data, order } = addOrder(ui.data, { ig, items, group });
   setDraftItems([]);
+  ui.shipPromptOrder = order.shipping ? order : null;
   apply(data);
   igField.value = "";
   igField.focus();
   showFormMessage(addOrderMsg, `Añadido: ${order.desc} — ${order.ig} (${group}).`);
   document.querySelector(`.order[data-id="${order.id}"]`)?.scrollIntoView({ block: "center" });
+});
+
+/* «Rellenar ahora» abre el pedido recién creado en su primer campo de envío. */
+dom.shipPrompt.addEventListener("click", (event) => {
+  const choice = event.target.closest("[data-ship-prompt]")?.dataset.shipPrompt;
+  if (!choice) return;
+  const { id } = ui.shipPromptOrder ?? {};
+  ui.shipPromptOrder = null;
+  if (choice !== "now" || !id) return renderAll();
+  ui.editingId = id;
+  ui.namingGroupId = null;
+  renderAll();
+  /* Si la pestaña activa esconde el pedido recién creado, se vuelve a «Todos». */
+  if (!dom.orders.querySelector(`.order[data-id="${id}"]`)) {
+    ui.filter = FILTERS.all;
+    settings.setFilter(ui.filter);
+    renderAll();
+  }
+  dom.orders.querySelector(`.order[data-id="${id}"]`)?.scrollIntoView({ block: "center" });
+  focusIn(id, '[data-ship="firstName"]');
 });
 
 const addItemForm = document.getElementById("addItemForm");

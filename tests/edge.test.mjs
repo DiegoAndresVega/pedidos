@@ -121,6 +121,53 @@ const check = (name, fn) => {
     assert.match(doc.getElementById("gateError").textContent, /no es un JSON válido/));
 }
 
+// 7. Datos antiguos: RETIRADA pasa a EN GRANERO y el nombre completo se parte
+{
+  const legacy = {
+    version: 1,
+    prices: { envio: 3 },
+    items: { gorro: { label: "Gorro", price: 30 } },
+    stock: { gorro: 2 },
+    orders: [
+      { id: "viejo1", group: "RETIRADA", ig: "RUTH", desc: "Gorro", items: ["gorro"] },
+      {
+        id: "viejo2", group: "ENVÍOS", ig: "ANA", desc: "Gorro", items: ["gorro"], shipping: true,
+        shippingInfo: { fullName: "Ana María Pérez Gil", address: "C/ Sol 1", city: "Vigo", postalCode: "36201" },
+      },
+    ],
+  };
+  const { doc, remote, settle } = await boot({ seed: legacy });
+  await settle(80);
+
+  check("la categoría RETIRADA se renombra a EN GRANERO", () => {
+    assert.deepEqual([...doc.querySelectorAll("#orders .section-label")].map(e => e.textContent),
+      ["EN GRANERO", "ENVÍOS"]);
+    assert.equal(doc.querySelector('.order[data-id="viejo1"]')?.closest("#orders") !== null, true);
+  });
+  check("los pedidos renombrados conservan el 🧑🏻‍🌾", () =>
+    assert.ok(doc.querySelector('.order[data-id="viejo1"] [data-act="drop"]')));
+
+  doc.querySelector('.order[data-id="viejo2"] [data-act="edit"]').click();
+  check("el nombre completo antiguo se parte en nombre y apellido", () => {
+    const row = doc.querySelector('.order[data-id="viejo2"]');
+    assert.equal(row.querySelector('[data-ship="firstName"]').value, "Ana");
+    assert.equal(row.querySelector('[data-ship="lastName"]').value, "María Pérez Gil");
+  });
+  check("el resto de la dirección antigua se conserva", () => {
+    const row = doc.querySelector('.order[data-id="viejo2"]');
+    assert.equal(row.querySelector('[data-ship="city"]').value, "Vigo");
+    assert.equal(row.querySelector('[data-ship="postalCode"]').value, "36201");
+  });
+  check("un envío antiguo completo no pide datos que faltan", () =>
+    assert.match(doc.querySelector('.order[data-id="viejo2"] .ship-flag').textContent, /envío listo/));
+
+  doc.querySelector('.order[data-id="viejo2"] [data-act="done"]').click();
+  doc.querySelector('.order[data-id="viejo1"] [data-act="pack"]').click();
+  await settle(80);
+  check("al guardar, el repositorio ya no tiene la categoría vieja", () =>
+    assert.equal(remote.file.orders.some(o => o.group === "RETIRADA"), false));
+}
+
 for (const [status, name] of results) console.log(`${status}  ${name}`);
 const failed = results.filter(([s]) => s === "FAIL").length;
 console.log(`\n${results.length - failed}/${results.length} pruebas OK`);

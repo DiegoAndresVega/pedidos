@@ -15,12 +15,16 @@ export const STORAGE_KEYS = Object.freeze({
   filter: "pedidos_filtro",
 });
 
-/* Pestañas de la lista de pedidos. */
+/* Pestañas de la lista de pedidos: primero por estado, después por categoría. */
 export const FILTERS = Object.freeze({
   all: "all",
   pending: "pending",
+  unpaid: "unpaid",
   topack: "topack",
   delivered: "delivered",
+  hand: "hand",
+  barn: "barn",
+  shipping: "shipping",
 });
 export const DEFAULT_FILTER = FILTERS.all;
 

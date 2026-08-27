@@ -68,16 +68,21 @@
   <span>❌ No pagado</span>
   <span>✏️ Editar nombre, artículos o bloque</span>
   <span>📮 Datos de envío</span>
+  <span>📋 Ver info: consultar la dirección sin editar</span>
   <span>Inventario: <b class="lg-num">disponible</b>/total · <s class="lg-out">agotado</s></span>
 </div>
 
 <div class="grid">
   <div class="card">
-    <div class="tabs" id="orderTabs" role="tablist" aria-label="Filtrar pedidos">
+    <div class="tabs" id="orderTabs" role="tablist" aria-label="Filtrar pedidos por estado o categoría">
       <button type="button" class="tab" data-filter="all" role="tab">Todos <span class="tab-n">0</span></button>
       <button type="button" class="tab" data-filter="pending" role="tab">Pendiente <span class="tab-n">0</span></button>
+      <button type="button" class="tab" data-filter="unpaid" role="tab">No pagado <span class="tab-n">0</span></button>
       <button type="button" class="tab" data-filter="topack" role="tab">Por empaquetar <span class="tab-n">0</span></button>
       <button type="button" class="tab" data-filter="delivered" role="tab">Entregado <span class="tab-n">0</span></button>
+      <button type="button" class="tab cat" data-filter="hand" role="tab">En mano <span class="tab-n">0</span></button>
+      <button type="button" class="tab cat" data-filter="barn" role="tab">En granero <span class="tab-n">0</span></button>
+      <button type="button" class="tab cat" data-filter="shipping" role="tab">Envíos <span class="tab-n">0</span></button>
       <span class="eyebrow" id="checkedCount">0 activos</span>
     </div>
 
@@ -94,6 +99,7 @@
       </label>
       <button type="submit" class="tbtn primary">+ Añadir pedido</button>
       <div class="draft-items" id="draftItems" hidden></div>
+      <div class="ship-prompt" id="shipPrompt" hidden></div>
       <p class="add-msg" id="addOrderMsg" hidden></p>
     </form>
 

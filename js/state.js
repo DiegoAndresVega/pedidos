@@ -3,17 +3,34 @@
 
 import { MAX_ITEM_COPIES, PAY_STATES } from "./config.js";
 
-export const DEFAULT_GROUPS = Object.freeze(["EN MANO", "RETIRADA", "ENVÍOS"]);
+export const HAND_GROUP = "EN MANO";
+export const PICKUP_GROUP = "EN GRANERO";
+export const SHIPPING_GROUP = "ENVÍOS";
 
-/* Datos de envío. Los cuatro primeros hacen falta para poder mandar el paquete. */
+export const DEFAULT_GROUPS = Object.freeze([HAND_GROUP, PICKUP_GROUP, SHIPPING_GROUP]);
+
+/* Nombres antiguos que hay que renombrar al leer el repositorio. */
+const RENAMED_GROUPS = Object.freeze({ RETIRADA: PICKUP_GROUP });
+
+/* Los pedidos de EN GRANERO se dejan en el local: por eso llevan el 🧑🏻‍🌾. */
+export function isPickupOrder(order) {
+  return order.group === PICKUP_GROUP;
+}
+
+/* Datos de envío, en el orden que pide la plataforma donde se pagan los envíos.
+   Los marcados como obligatorios hacen falta para poder mandar el paquete. */
 export const SHIPPING_FIELDS = Object.freeze([
-  { key: "fullName", label: "Nombre completo", required: true, type: "text", placeholder: "Marta García López" },
-  { key: "address", label: "Dirección", required: true, type: "text", placeholder: "C/ Mayor 12, 3ºB" },
-  { key: "city", label: "Ciudad", required: true, type: "text", placeholder: "Bilbao" },
-  { key: "postalCode", label: "Código postal", required: true, type: "text", placeholder: "48001" },
-  { key: "email", label: "Email", required: false, type: "email", placeholder: "opcional" },
-  { key: "phone", label: "Teléfono", required: false, type: "tel", placeholder: "opcional" },
+  { key: "firstName", label: "Nombre", required: true, type: "text", placeholder: "Marta" },
+  { key: "lastName", label: "Apellido", required: true, type: "text", placeholder: "García López" },
+  { key: "address", label: "Dirección", required: true, type: "text", placeholder: "C/ Mayor 12" },
+  { key: "addressExtra", label: "Piso, puerta, etc.", required: false, type: "text", placeholder: "opcional" },
+  { key: "postalCode", label: "Código postal", required: true, type: "text", placeholder: "28025" },
+  { key: "city", label: "Ciudad", required: true, type: "text", placeholder: "Madrid" },
+  { key: "email", label: "Correo electrónico", required: false, type: "email", placeholder: "opcional" },
+  { key: "phone", label: "Teléfono móvil", required: false, type: "tel", placeholder: "+34 600123456" },
 ]);
+
+export const REQUIRED_SHIPPING_COUNT = SHIPPING_FIELDS.filter((field) => field.required).length;
 
 export const SHIPPING_KEYS = Object.freeze(SHIPPING_FIELDS.map((field) => field.key));
 
@@ -21,9 +38,21 @@ function emptyShippingInfo() {
   return SHIPPING_KEYS.reduce((acc, key) => ({ ...acc, [key]: "" }), {});
 }
 
+/* Los datos viejos guardaban un solo "nombre completo": la primera palabra pasa a
+   ser el nombre y el resto, el apellido. */
+function splitFullName(fullName) {
+  const parts = String(fullName ?? "").trim().split(/\s+/).filter(Boolean);
+  return { firstName: parts[0] ?? "", lastName: parts.slice(1).join(" ") };
+}
+
 function normalizeShippingInfo(raw) {
   const source = raw && typeof raw === "object" ? raw : {};
-  return SHIPPING_KEYS.reduce((acc, key) => ({ ...acc, [key]: String(source[key] ?? "").trim() }), {});
+  const hasNewName = Boolean(source.firstName || source.lastName);
+  const legacy = hasNewName ? {} : splitFullName(source.fullName);
+  return SHIPPING_KEYS.reduce(
+    (acc, key) => ({ ...acc, [key]: String(source[key] ?? legacy[key] ?? "").trim() }),
+    {},
+  );
 }
 
 /* Un envío está listo cuando tiene nombre, dirección, ciudad y código postal. */
@@ -68,6 +97,11 @@ function normalizeStock(rawStock, items) {
   }, {});
 }
 
+function renameGroup(rawGroup) {
+  const group = String(rawGroup || HAND_GROUP);
+  return RENAMED_GROUPS[group] ?? group;
+}
+
 function normalizePay(value) {
   return value === PAY_STATES.paid || value === PAY_STATES.unpaid ? value : null;
 }
@@ -78,7 +112,7 @@ function normalizeOrder(rawOrder, index, items) {
     : [];
   return {
     id: String(rawOrder?.id || `o${Date.now().toString(36)}${index}`),
-    group: String(rawOrder?.group || DEFAULT_GROUPS[0]),
+    group: renameGroup(rawOrder?.group),
     ig: String(rawOrder?.ig ?? ""),
     desc: String(rawOrder?.desc ?? ""),
     items: validItems,
@@ -116,14 +150,6 @@ function withTimestamp(data) {
 
 export function newOrderId() {
   return `o${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-}
-
-export const SHIPPING_GROUP = "ENVÍOS";
-export const PICKUP_GROUP = "RETIRADA";
-
-/* Los pedidos de RETIRADA se dejan en el local: por eso llevan el 🧑🏻‍🌾. */
-export function isPickupOrder(order) {
-  return order.group === PICKUP_GROUP;
 }
 
 /* "Gorros marrón // Riñoneras rosa ×2" a partir de la lista de artículos. */
@@ -317,10 +343,13 @@ export function computeTotals(data) {
     });
   });
 
-  const inventory = Object.keys(data.items).map((key) => {
-    const total = data.stock[key] ?? 0;
-    return { key, label: data.items[key].label, sold: sold[key], total, remaining: total - sold[key] };
-  });
+  /* Lo disponible arriba y lo agotado al final, sin alterar el orden dentro de cada mitad. */
+  const inventory = Object.keys(data.items)
+    .map((key) => {
+      const total = data.stock[key] ?? 0;
+      return { key, label: data.items[key].label, sold: sold[key], total, remaining: total - sold[key] };
+    })
+    .sort((a, b) => Number(b.remaining > 0) - Number(a.remaining > 0));
 
   const budget = active.reduce(
     (acc, order) => {

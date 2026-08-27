@@ -15,7 +15,7 @@ check("carga 25 pedidos desde el repositorio", () =>
 
 check("pinta los 3 bloques", () =>
   assert.deepEqual([...doc.querySelectorAll(".section-label")].map(e => e.textContent),
-    ["EN MANO", "RETIRADA", "ENVÍOS"]));
+    ["EN MANO", "EN GRANERO", "ENVÍOS"]));
 
 check("la pantalla de acceso está oculta con token válido", () =>
   assert.equal(doc.getElementById("gate").hidden, true));
@@ -152,7 +152,7 @@ check("el bloque se elige en un desplegable, no escribiendo", () => {
   assert.equal(select.tagName, "SELECT");
   assert.equal(select.value, "ENVÍOS");
   assert.deepEqual([...select.options].map(o => o.value),
-    ["EN MANO", "RETIRADA", "ENVÍOS", "__nueva__"]);
+    ["EN MANO", "EN GRANERO", "ENVÍOS", "__nueva__"]);
 });
 check("estando en ENVÍOS pide los datos de envío", () =>
   assert.ok(rowOf(anii.id).querySelector(".ship-panel")));
@@ -196,7 +196,7 @@ check("volver a ENVÍOS reactiva el envío", () => {
   assert.ok(rowOf(anii.id).querySelector(".ship-panel"));
 });
 check("los datos de envío guardados sobreviven al viaje de ida y vuelta", () =>
-  assert.ok(rowOf(anii.id).querySelector('[data-ship="fullName"]')));
+  assert.ok(rowOf(anii.id).querySelector('[data-ship="firstName"]')));
 
 // Crear una categoría nueva desde el desplegable
 groupSelect(anii.id).value = "__nueva__";
@@ -224,7 +224,7 @@ check("el desplegable de productos lista el inventario", () =>
   assert.equal(doc.getElementById("newOrderItem").options.length, 13));
 check("el desplegable de categorías lista los bloques", () =>
   assert.deepEqual([...doc.getElementById("newOrderGroup").options].map(o => o.value),
-    ["EN MANO", "RETIRADA", "ENVÍOS"]));
+    ["EN MANO", "EN GRANERO", "ENVÍOS"]));
 
 doc.getElementById("newOrderIg").value = "NUEVA CLIENTA";
 doc.getElementById("newOrderItem").value = "rin_rosa";
@@ -242,7 +242,7 @@ check("el formulario crea el pedido y lo guarda", () => {
 check("la categoría ENVÍOS activa el gasto de envío", () => assert.equal(created.shipping, true));
 check("el pedido nuevo entra dentro de su bloque", () => {
   const groups = remote.file.orders.map(o => o.group);
-  assert.deepEqual([...new Set(groups)], ["EN MANO", "RETIRADA", "ENVÍOS"]);
+  assert.deepEqual([...new Set(groups)], ["EN MANO", "EN GRANERO", "ENVÍOS"]);
 });
 check("el formulario se vacía tras añadir", () =>
   assert.equal(doc.getElementById("newOrderIg").value, ""));
@@ -291,9 +291,9 @@ const tab = (name) => doc.querySelector(`#orderTabs .tab[data-filter="${name}"]`
 const tabCount = (name) => Number(tab(name).querySelector(".tab-n").textContent);
 const visibleRows = () => doc.querySelectorAll("#orders .order").length;
 
-check("hay cuatro pestañas en la cabecera", () =>
+check("hay ocho pestañas: cinco de estado y tres de categoría", () =>
   assert.deepEqual([...doc.querySelectorAll("#orderTabs .tab")].map(t => t.dataset.filter),
-    ["all", "pending", "topack", "delivered"]));
+    ["all", "pending", "unpaid", "topack", "delivered", "hand", "barn", "shipping"]));
 check("«Todos» está activa al arrancar", () =>
   assert.equal(tab("all").classList.contains("on"), true));
 check("los contadores reparten los pedidos", () => {
@@ -478,45 +478,49 @@ const shipId = shipRow.dataset.id;
 doc.querySelector(`.order[data-id="${shipId}"] [data-act="edit"]`).click();
 check("el panel de envío solo sale en pedidos con envío", () =>
   assert.ok(doc.querySelector(`.order[data-id="${shipId}"] .ship-panel`)));
-check("están los seis campos pedidos", () =>
+check("están los ocho campos de la plataforma de envíos", () =>
   assert.deepEqual(
     [...doc.querySelectorAll(`.order[data-id="${shipId}"] [data-ship]`)].map(i => i.dataset.ship),
-    ["fullName", "address", "city", "postalCode", "email", "phone"]));
+    ["firstName", "lastName", "address", "addressExtra", "postalCode", "city", "email", "phone"]));
 
 const typeShip = (key, value) => {
   const input = doc.querySelector(`.order[data-id="${shipId}"] [data-ship="${key}"]`);
   input.value = value;
   input.dispatchEvent(new window.Event("input", { bubbles: true }));
 };
-typeShip("fullName", "Marta García López");
+typeShip("firstName", "Marta");
+typeShip("lastName", "García López");
 typeShip("address", "C/ Mayor 12, 3ºB");
 await settle(60);
 
 check("los datos de envío se guardan en el repositorio", () => {
   const saved = remote.file.orders.find(o => o.id === shipId);
-  assert.equal(saved.shippingInfo.fullName, "Marta García López");
+  assert.equal(saved.shippingInfo.firstName, "Marta");
+  assert.equal(saved.shippingInfo.lastName, "García López");
   assert.equal(saved.shippingInfo.address, "C/ Mayor 12, 3ºB");
 });
 check("escribir la dirección no repinta la fila", () =>
   assert.equal(doc.querySelector(`.order[data-id="${shipId}"] [data-ship="address"]`).value, "C/ Mayor 12, 3ºB"));
 check("con datos a medias sigue avisando de lo que falta", () =>
-  assert.match(doc.querySelector(`.order[data-id="${shipId}"] .ship-state`).textContent, /Faltan 2 de 4/));
+  assert.match(doc.querySelector(`.order[data-id="${shipId}"] .ship-state`).textContent, /Faltan 2 de 5/));
 
 typeShip("city", "Bilbao");
 typeShip("postalCode", "48001");
 await settle(60);
-check("al completar los cuatro obligatorios el aviso pasa a listo", () => {
+check("al completar los cinco obligatorios el aviso pasa a listo", () => {
   assert.match(doc.querySelector(`.order[data-id="${shipId}"] .ship-flag`).textContent, /envío listo/);
   assert.equal(doc.querySelector(`.order[data-id="${shipId}"] .ship-panel`).classList.contains("incomplete"), false);
 });
 
 typeShip("email", "marta@ejemplo.com");
-typeShip("phone", "600123456");
+typeShip("phone", "+34600123456");
+typeShip("addressExtra", "3ºB");
 await settle(60);
-check("email y teléfono son opcionales pero se guardan", () => {
+check("email, teléfono y piso son opcionales pero se guardan", () => {
   const saved = remote.file.orders.find(o => o.id === shipId);
   assert.equal(saved.shippingInfo.email, "marta@ejemplo.com");
-  assert.equal(saved.shippingInfo.phone, "600123456");
+  assert.equal(saved.shippingInfo.phone, "+34600123456");
+  assert.equal(saved.shippingInfo.addressExtra, "3ºB");
 });
 
 doc.querySelector(`.order[data-id="${shipId}"] [data-act="done"]`).click();
@@ -598,11 +602,11 @@ const btnOf = (id, act) => doc.querySelector(`.order[data-id="${id}"] [data-act=
 
 check("solo los envíos llevan el botón de etiqueta", () => {
   assert.ok(btnOf("o017", "label"), "falta 🎫 en ENVÍOS");
-  assert.equal(btnOf("o011", "label"), null, "sobra 🎫 en RETIRADA");
+  assert.equal(btnOf("o011", "label"), null, "sobra 🎫 en EN GRANERO");
   assert.equal(btnOf("o001", "label"), null, "sobra 🎫 en EN MANO");
 });
 check("solo las retiradas llevan el botón del granjero", () => {
-  assert.ok(btnOf("o011", "drop"), "falta 🧑🏻‍🌾 en RETIRADA");
+  assert.ok(btnOf("o011", "drop"), "falta 🧑🏻‍🌾 en EN GRANERO");
   assert.equal(btnOf("o017", "drop"), null, "sobra 🧑🏻‍🌾 en ENVÍOS");
   assert.equal(btnOf("o001", "drop"), null, "sobra 🧑🏻‍🌾 en EN MANO");
 });
@@ -631,6 +635,136 @@ check("marcar la etiqueta no toca empaquetado ni entregado", () => {
   assert.equal(saved.packed, false);
   assert.equal(saved.delivered, false);
 });
+
+// --- pestañas nuevas: no pagado y las tres categorías ----------------------
+const tabRows = (filter) => {
+  doc.querySelector(`#orderTabs .tab[data-filter="${filter}"]`).click();
+  return [...doc.querySelectorAll("#orders .order")];
+};
+
+check("la pestaña «En mano» solo enseña esa categoría", () => {
+  const rows = tabRows("hand");
+  assert.ok(rows.length > 0);
+  const secciones = [...doc.querySelectorAll("#orders .section-label")].map(e => e.textContent);
+  assert.deepEqual(secciones, ["EN MANO"]);
+});
+check("la pestaña «En granero» solo enseña esa categoría", () => {
+  const rows = tabRows("barn");
+  assert.ok(rows.length > 0);
+  assert.deepEqual([...doc.querySelectorAll("#orders .section-label")].map(e => e.textContent), ["EN GRANERO"]);
+});
+check("la pestaña «Envíos» solo enseña esa categoría", () => {
+  const rows = tabRows("shipping");
+  assert.ok(rows.length > 0);
+  assert.deepEqual([...doc.querySelectorAll("#orders .section-label")].map(e => e.textContent), ["ENVÍOS"]);
+});
+check("la pestaña «No pagado» deja fuera lo ya cobrado", () => {
+  const ids = tabRows("unpaid").map(r => r.dataset.id);
+  const pagados = remote.file.orders.filter(o => o.pay === "paid").map(o => o.id);
+  assert.ok(pagados.length > 0, "el escenario debería tener algún pedido pagado");
+  assert.equal(ids.some(id => pagados.includes(id)), false);
+});
+check("las tres categorías suman el total de pedidos", () => {
+  const suma = ["hand", "barn", "shipping"].reduce((total, f) => total + tabCount(f), 0);
+  assert.equal(suma, tabCount("all"));
+});
+
+tab("all").click();
+
+// --- inventario ordenado por existencias ----------------------------------
+check("el inventario pone lo disponible arriba y lo agotado al final", () => {
+  const agotados = [...doc.querySelectorAll("#inventory .inv-row")]
+    .map(r => r.classList.contains("sold-out"));
+  const primerAgotado = agotados.indexOf(true);
+  assert.ok(agotados.includes(false), "debería quedar algún artículo disponible");
+  assert.ok(primerAgotado === -1 || !agotados.slice(primerAgotado).includes(false),
+    "hay un artículo disponible por debajo de uno agotado");
+});
+
+// --- ✅ pide confirmación ---------------------------------------------------
+const enMano = doc.querySelector("#orders .order").dataset.id;
+const entregado = () => remote.file.orders.find(o => o.id === enMano).delivered;
+const antesDeEntregar = entregado();
+
+globalThis.confirm = () => false;
+doc.querySelector(`.order[data-id="${enMano}"] [data-act="deliver"]`).click();
+await settle(40);
+check("cancelar la confirmación deja el pedido como estaba", () =>
+  assert.equal(entregado(), antesDeEntregar));
+
+globalThis.confirm = () => true;
+doc.querySelector(`.order[data-id="${enMano}"] [data-act="deliver"]`).click();
+await settle(60);
+check("aceptar la confirmación sí marca el pedido", () =>
+  assert.equal(entregado(), !antesDeEntregar));
+
+tab("all").click();
+doc.querySelector(`.order[data-id="${enMano}"] [data-act="deliver"]`).click();
+await settle(60);
+check("desmarcar entregado también pasa por la confirmación", () =>
+  assert.equal(entregado(), antesDeEntregar));
+
+// --- 📋 ver info sin abrir la edición --------------------------------------
+check("solo los envíos tienen botón de ver info", () => {
+  assert.ok(doc.querySelector(`.order[data-id="${shipId}"] [data-act="info"]`));
+  assert.equal(doc.querySelector(`.order[data-id="${enMano}"] [data-act="info"]`), null);
+});
+
+doc.querySelector(`.order[data-id="${shipId}"] [data-act="info"]`).click();
+check("ver info enseña la dirección sin abrir el panel de edición", () => {
+  const row = doc.querySelector(`.order[data-id="${shipId}"]`);
+  assert.ok(row.querySelector(".info-panel"), "no se pintó la ficha");
+  assert.equal(row.querySelector(".edit-panel"), null, "no debería abrir la edición");
+  assert.match(row.querySelector(".info-panel").textContent, /Marta/);
+  assert.match(row.querySelector(".info-panel").textContent, /Bilbao/);
+  assert.match(row.querySelector(".info-panel").textContent, /\+34600123456/);
+});
+doc.querySelector(`.order[data-id="${shipId}"] [data-act="info"]`).click();
+check("volver a pulsar cierra la ficha", () =>
+  assert.equal(doc.querySelector(`.order[data-id="${shipId}"] .info-panel`), null));
+
+// --- aviso de datos de envío al crear el pedido ----------------------------
+const shipPrompt = doc.getElementById("shipPrompt");
+tab("hand").click();
+doc.getElementById("newOrderIg").value = "ENVÍO NUEVO";
+doc.getElementById("newOrderItem").value = "rin_negra";
+doc.getElementById("newOrderGroup").value = "ENVÍOS";
+doc.getElementById("addOrderForm").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+await settle(60);
+
+check("crear un envío ofrece rellenar los datos al momento", () => {
+  assert.equal(shipPrompt.hidden, false);
+  assert.match(shipPrompt.textContent, /ENVÍO NUEVO/);
+  assert.ok(shipPrompt.querySelector('[data-ship-prompt="now"]'));
+  assert.ok(shipPrompt.querySelector('[data-ship-prompt="later"]'));
+});
+
+const envioNuevo = remote.file.orders.find(o => o.ig === "ENVÍO NUEVO");
+shipPrompt.querySelector('[data-ship-prompt="now"]').click();
+check("«Rellenar ahora» abre el pedido en sus datos de envío", () => {
+  const row = doc.querySelector(`.order[data-id="${envioNuevo.id}"]`);
+  assert.ok(row.querySelector(".ship-panel"), "no se abrió el panel de envío");
+  assert.ok(row.querySelector('[data-ship="firstName"]'));
+  assert.equal(shipPrompt.hidden, true, "el aviso debería desaparecer");
+});
+check("si la pestaña activa esconde el envío, se vuelve a «Todos»", () =>
+  assert.ok(tab("all").classList.contains("on")));
+
+doc.querySelector(`.order[data-id="${envioNuevo.id}"] [data-act="done"]`).click();
+doc.querySelector(`.order[data-id="${envioNuevo.id}"] [data-act="info"]`).click();
+check("en un envío sin rellenar la ficha sale con guiones", () => {
+  const ficha = doc.querySelector(`.order[data-id="${envioNuevo.id}"] .info-panel`);
+  assert.match(ficha.textContent, /—/);
+  assert.equal(ficha.querySelectorAll(".info-row.missing").length, 5, "los 5 obligatorios en rojo");
+});
+doc.querySelector(`.order[data-id="${envioNuevo.id}"] [data-act="info"]`).click();
+
+doc.getElementById("newOrderIg").value = "EN MANO NUEVO";
+doc.getElementById("newOrderItem").value = "rin_negra";
+doc.getElementById("newOrderGroup").value = "EN MANO";
+doc.getElementById("addOrderForm").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+await settle(60);
+check("un pedido que no es envío no muestra el aviso", () => assert.equal(shipPrompt.hidden, true));
 
 // --- estado de sincronización ----------------------------------------------
 check("la etiqueta muestra sincronizado", () =>
